@@ -47,6 +47,12 @@
   overflow: hidden;
 }
 
+.sidechat-popup-compact {
+  width: min(300px, calc(100vw - 24px));
+  height: auto;
+  max-height: none;
+}
+
 .sidechat-popup-header {
   display: flex;
   align-items: center;

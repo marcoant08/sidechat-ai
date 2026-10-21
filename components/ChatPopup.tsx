@@ -436,8 +436,12 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     </>
   );
 
+  const compact = !contextDead && !unlocked;
+
   return (
-    <div className="sidechat-root sidechat-popup">
+    <div
+      className={`sidechat-root sidechat-popup${compact ? ' sidechat-popup-compact' : ''}`}
+    >
       <header className="sidechat-popup-header">
         <strong>🤖 sidechat-ai</strong>
         <div className="sidechat-popup-actions">
