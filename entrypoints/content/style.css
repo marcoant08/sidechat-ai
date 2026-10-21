@@ -137,9 +137,9 @@
   border-radius: 8px;
   overflow-wrap: anywhere;
   background-color: #f4f1ea;
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
+  background-size: auto;
+  background-position: top left;
+  background-repeat: repeat;
 }
 
 .sidechat-messages-empty {
@@ -161,11 +161,11 @@
 }
 
 .sidechat-msg-row-user {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .sidechat-msg-row-assistant {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .sidechat-bubble {
@@ -177,16 +177,24 @@
   overflow-wrap: anywhere;
 }
 
+.sidechat-bubble-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #0f766e;
+  margin-bottom: 0.2rem;
+  line-height: 1.2;
+}
+
 .sidechat-bubble-user {
   background: #d9fdd3;
   color: #1c1917;
-  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
 }
 
 .sidechat-bubble-assistant {
   background: #ffffff;
   color: #1c1917;
-  border-top-right-radius: 3px;
+  border-top-left-radius: 3px;
 }
 
 .sidechat-composer {

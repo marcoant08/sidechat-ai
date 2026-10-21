@@ -28,6 +28,9 @@ export function MessageList({ messages, streamingText }: Props) {
           className={`sidechat-msg-row sidechat-msg-row-${m.role}`}
         >
           <div className={`sidechat-bubble sidechat-bubble-${m.role}`}>
+            {m.role === 'assistant' && (
+              <div className="sidechat-bubble-name">Assistente</div>
+            )}
             <p className="sidechat-msg">{m.content}</p>
           </div>
         </div>
@@ -35,6 +38,7 @@ export function MessageList({ messages, streamingText }: Props) {
       {streamingText ? (
         <div className="sidechat-msg-row sidechat-msg-row-assistant">
           <div className="sidechat-bubble sidechat-bubble-assistant">
+            <div className="sidechat-bubble-name">Assistente</div>
             <p className="sidechat-msg">{streamingText}</p>
           </div>
         </div>
