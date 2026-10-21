@@ -15,7 +15,7 @@ export default defineConfig({
     ],
     web_accessible_resources: [
       {
-        resources: ['chat-wallpaper.png'],
+        resources: ['chat-wallpaper.png', 'chat-wallpaper-dark.jpg'],
         matches: ['*://*/*'],
       },
     ],

@@ -14,7 +14,11 @@ import {
   listSessions,
   updateSession,
 } from '../lib/storage/sessions';
-import { getSettings, saveSettings } from '../lib/storage/settings';
+import {
+  getSettings,
+  saveSettings,
+  saveTheme,
+} from '../lib/storage/settings';
 import {
   getProviderApiKey,
   getVaultStatus,
@@ -162,10 +166,16 @@ async function dispatch(
       return { type: 'SETTINGS_RESULT', ...settings };
     }
     case 'SAVE_SETTINGS': {
+      const current = await getSettings();
       await saveSettings({
         defaultProvider: message.defaultProvider,
         defaultModel: message.defaultModel,
+        theme: current.theme,
       });
+      return { type: 'OK' };
+    }
+    case 'SET_THEME': {
+      await saveTheme(message.theme);
       return { type: 'OK' };
     }
     case 'LIST_SESSIONS': {

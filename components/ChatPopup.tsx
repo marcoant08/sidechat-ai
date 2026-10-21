@@ -1,4 +1,4 @@
-import { CaretDown, GearSix, X } from '@phosphor-icons/react';
+import { CaretDown, GearSix, Moon, Sun, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -16,6 +16,7 @@ import {
   resolveModelSelection,
 } from '../lib/models';
 import { PROVIDERS, type ProviderId } from '../lib/providers/types';
+import type { ThemeId } from '../lib/storage/settings';
 import type { ChatSession } from '../lib/storage/sessions';
 
 interface Props {
@@ -47,6 +48,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   const [unlocking, setUnlocking] = useState(false);
   const [controlsHidden, setControlsHidden] = useState(false);
   const [controlsPinned, setControlsPinned] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>('light');
   const scrollRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
 
@@ -146,6 +148,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         const settings = await sendToBackground({ type: 'GET_SETTINGS' });
         if (settings.type === 'SETTINGS_RESULT') {
           setProvider(settings.defaultProvider);
+          setTheme(settings.theme);
           const known =
             PROVIDERS.find((p) => p.id === settings.defaultProvider)?.models ??
             [];
@@ -356,6 +359,16 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     });
   };
 
+  const toggleTheme = () => {
+    const next: ThemeId = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    void sendToBackground({ type: 'SET_THEME', theme: next }).catch((err) => {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+      }
+    });
+  };
+
   const renderControls = () => (
     <>
       {truncated.truncated && (
@@ -441,10 +454,25 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   return (
     <div
       className={`sidechat-root sidechat-popup${compact ? ' sidechat-popup-compact' : ''}`}
+      data-theme={theme}
     >
       <header className="sidechat-popup-header">
         <strong>🤖 sidechat-ai</strong>
         <div className="sidechat-popup-actions">
+          <button
+            type="button"
+            className="sidechat-btn sidechat-btn-icon"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            aria-label={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            disabled={contextDead}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? (
+              <Sun size={18} weight="bold" />
+            ) : (
+              <Moon size={18} weight="bold" />
+            )}
+          </button>
           {(unlocked || !configured) && (
             <button
               type="button"
@@ -557,6 +585,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
                 messages={session?.messages ?? []}
                 streamingText={streamingText || undefined}
                 model={session?.model || resolvedModel}
+                theme={theme}
               />
             </div>
           </div>

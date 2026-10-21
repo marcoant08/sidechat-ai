@@ -1,6 +1,7 @@
 import { Check } from '@phosphor-icons/react';
 import { useMemo } from 'react';
 import { MODEL_DIGITAR } from '../lib/models';
+import type { ThemeId } from '../lib/storage/settings';
 import type { SessionMessage } from '../lib/storage/sessions';
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
   streamingText?: string;
   /** Fallback model for streaming / legacy messages without per-message model. */
   model?: string;
+  theme?: ThemeId;
 }
 
 function resolveDisplayModel(...candidates: Array<string | undefined>): string | undefined {
@@ -49,10 +51,20 @@ function AssistantName({ model }: { model?: string }) {
   );
 }
 
-export function MessageList({ messages, streamingText, model }: Props) {
+export function MessageList({
+  messages,
+  streamingText,
+  model,
+  theme = 'light',
+}: Props) {
   const wallpaperUrl = useMemo(
-    () => browser.runtime.getURL('/chat-wallpaper.png'),
-    [],
+    () =>
+      browser.runtime.getURL(
+        theme === 'dark'
+          ? '/chat-wallpaper-dark.jpg'
+          : '/chat-wallpaper.png',
+      ),
+    [theme],
   );
 
   return (

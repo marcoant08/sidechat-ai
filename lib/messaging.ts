@@ -1,4 +1,5 @@
 import { MAX_MESSAGE_CHARS } from './limits';
+import { isThemeId, type ThemeId } from './storage/settings';
 import { isProviderId, type ProviderId } from './providers/types';
 
 export type ClientMessage =
@@ -13,6 +14,7 @@ export type ClientMessage =
       defaultProvider: ProviderId;
       defaultModel: string;
     }
+  | { type: 'SET_THEME'; theme: ThemeId }
   | { type: 'LIST_SESSIONS' }
   | { type: 'GET_SESSION'; sessionId: string }
   | {
@@ -51,6 +53,7 @@ export type ServerMessage =
       type: 'SETTINGS_RESULT';
       defaultProvider: ProviderId;
       defaultModel: string;
+      theme: ThemeId;
     }
   | { type: 'SESSIONS_RESULT'; sessions: unknown }
   | { type: 'SESSION_RESULT'; session: unknown }
@@ -115,6 +118,11 @@ export function parseClientMessage(raw: unknown): ClientMessage {
         defaultProvider: msg.defaultProvider,
         defaultModel: msg.defaultModel,
       };
+    }
+
+    case 'SET_THEME': {
+      if (!isThemeId(msg.theme)) throw new Error('Tema inválido.');
+      return { type, theme: msg.theme };
     }
 
     case 'GET_SESSION': {

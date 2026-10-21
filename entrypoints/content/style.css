@@ -142,7 +142,7 @@
   border: 1px solid var(--sc-border);
   border-radius: 8px;
   overflow-wrap: anywhere;
-  background-color: #f4f1ea;
+  background-color: var(--sc-messages-bg);
   background-size: auto;
   background-position: top left;
   background-repeat: repeat;
@@ -153,7 +153,7 @@
   margin: 1.25rem 0.5rem;
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--sc-empty-bg);
   color: var(--sc-muted);
   font-size: 0.78rem;
   text-align: center;
@@ -198,13 +198,13 @@
 .sidechat-bubble-name-label {
   font-size: inherit;
   font-weight: 700;
-  color: #0f766e;
+  color: var(--sc-accent);
 }
 
 .sidechat-bubble-name-model {
   font-size: 0.8em;
   font-weight: 400;
-  color: #78716c;
+  color: var(--sc-muted);
 }
 
 .sidechat-bubble-meta {
@@ -215,7 +215,7 @@
   margin-top: 0.2rem;
   font-size: 0.65rem;
   line-height: 1;
-  color: #78716c;
+  color: var(--sc-muted);
 }
 
 .sidechat-bubble-time {
@@ -228,15 +228,23 @@
 }
 
 .sidechat-bubble-user {
-  background: #d9fdd3;
-  color: #1c1917;
+  background: var(--sc-bubble-user);
+  color: var(--sc-bubble-ink);
   border-top-right-radius: 3px;
 }
 
 .sidechat-bubble-assistant {
-  background: #ffffff;
-  color: #1c1917;
+  background: var(--sc-bubble-assistant);
+  color: var(--sc-bubble-ink);
   border-top-left-radius: 3px;
+}
+
+.sidechat-root[data-theme='dark'] .sidechat-controls-pinned {
+  background: var(--sc-bg);
+}
+
+.sidechat-root[data-theme='dark'] .sidechat-reveal-controls {
+  background: var(--sc-surface);
 }
 
 .sidechat-composer {

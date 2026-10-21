@@ -8,11 +8,34 @@
   --sc-accent-ink: #f0fdfa;
   --sc-border: #e7e5e4;
   --sc-danger: #b91c1c;
+  --sc-input-bg: #fff;
+  --sc-bubble-user: #d9fdd3;
+  --sc-bubble-assistant: #ffffff;
+  --sc-bubble-ink: #1c1917;
+  --sc-messages-bg: #f4f1ea;
+  --sc-empty-bg: rgba(255, 255, 255, 0.88);
   --sc-radius: 10px;
   --sc-font: "IBM Plex Sans", "Segoe UI", sans-serif;
   font-family: var(--sc-font);
   color: var(--sc-ink);
   box-sizing: border-box;
+}
+
+.sidechat-root[data-theme='dark'] {
+  --sc-bg: #12151c;
+  --sc-surface: #1a1f2b;
+  --sc-ink: #e8eaed;
+  --sc-muted: #9aa3b2;
+  --sc-accent: #2dd4bf;
+  --sc-accent-ink: #042f2e;
+  --sc-border: #2a3142;
+  --sc-danger: #f87171;
+  --sc-input-bg: #0f131a;
+  --sc-bubble-user: #005c4b;
+  --sc-bubble-assistant: #1f2737;
+  --sc-bubble-ink: #e8eaed;
+  --sc-messages-bg: #0a0c10;
+  --sc-empty-bg: rgba(26, 31, 43, 0.9);
 }
 
 .sidechat-root *,
@@ -66,7 +89,7 @@
 .sidechat-textarea {
   width: 100%;
   border: 1px solid var(--sc-border);
-  background: #fff;
+  background: var(--sc-input-bg);
   color: var(--sc-ink);
   border-radius: 8px;
   padding: 0.5rem 0.65rem;
