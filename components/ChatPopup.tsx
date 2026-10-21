@@ -1,5 +1,5 @@
-import { GearSix, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CaretDown, GearSix, X } from '@phosphor-icons/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { SessionPicker } from './SessionPicker';
@@ -45,6 +45,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   const [streamingText, setStreamingText] = useState('');
   const [contextDead, setContextDead] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [controlsHidden, setControlsHidden] = useState(false);
+  const [controlsPinned, setControlsPinned] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   const modelOptions = useMemo(() => {
     const def = PROVIDERS.find((p) => p.id === provider);
@@ -199,6 +203,37 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     return () => browser.runtime.onMessage.removeListener(listener);
   }, [loadSession, refreshSessions, sessionId]);
 
+  useEffect(() => {
+    if (!unlocked || contextDead) {
+      setControlsHidden(false);
+      setControlsPinned(false);
+      return;
+    }
+    const root = scrollRef.current;
+    const target = controlsRef.current;
+    if (!root || !target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const visible = Boolean(entry?.isIntersecting);
+        setControlsHidden(!visible);
+        if (visible) setControlsPinned(false);
+      },
+      { root, threshold: 0, rootMargin: '0px' },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [contextDead, unlocked, model]);
+
+  useEffect(() => {
+    if (!controlsPinned) return;
+    const root = scrollRef.current;
+    if (!root) return;
+    const onScroll = () => setControlsPinned(false);
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => root.removeEventListener('scroll', onScroll);
+  }, [controlsPinned]);
+
   const resolvedModel = effectiveModelId(model, customModel);
 
   const ensureSession = async (): Promise<string> => {
@@ -313,6 +348,86 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     });
   };
 
+  const renderControls = () => (
+    <>
+      {truncated.truncated && (
+        <p className="sidechat-muted">
+          Texto selecionado truncado para {truncated.text.length} caracteres.
+        </p>
+      )}
+
+      <SessionPicker
+        sessions={sessions}
+        currentId={sessionId}
+        onSelect={(id) => void loadSession(id)}
+        onCreate={() => {
+          setSessionId(null);
+          setSession(null);
+          setStreamingText('');
+        }}
+      />
+
+      <div className="sidechat-row">
+        <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="sidechat-label">Provider</label>
+          <select
+            className="sidechat-select"
+            value={provider}
+            onChange={(e) => {
+              const id = e.target.value as ProviderId;
+              setProvider(id);
+              const def = PROVIDERS.find((p) => p.id === id);
+              if (def) {
+                setModel(def.defaultModel);
+                setCustomModel('');
+              }
+            }}
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+                {providersWithKey.includes(p.id) ? '' : ' (sem key)'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
+          <label className="sidechat-label">Modelo</label>
+          <select
+            className="sidechat-select"
+            value={model}
+            onChange={(e) => {
+              const value = e.target.value;
+              setModel(value);
+              if (value !== MODEL_DIGITAR) {
+                setCustomModel('');
+              }
+            }}
+          >
+            {modelOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+            <option value={MODEL_DIGITAR}>Digitar</option>
+          </select>
+        </div>
+      </div>
+
+      {model === MODEL_DIGITAR && (
+        <div className="sidechat-field">
+          <label className="sidechat-label">Model id</label>
+          <input
+            className="sidechat-input"
+            value={customModel}
+            placeholder="ex: gpt-4.1"
+            onChange={(e) => setCustomModel(e.target.value)}
+          />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="sidechat-root sidechat-popup">
       <header className="sidechat-popup-header">
@@ -402,86 +517,36 @@ export function ChatPopup({ selectedText, onClose }: Props) {
 
       {!contextDead && unlocked && (
         <>
-          {truncated.truncated && (
-            <p className="sidechat-muted">
-              Texto selecionado truncado para {truncated.text.length} caracteres.
-            </p>
-          )}
-
-          <SessionPicker
-            sessions={sessions}
-            currentId={sessionId}
-            onSelect={(id) => void loadSession(id)}
-            onCreate={() => {
-              setSessionId(null);
-              setSession(null);
-              setStreamingText('');
-            }}
-          />
-
-          <div className="sidechat-row">
-            <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="sidechat-label">Provider</label>
-              <select
-                className="sidechat-select"
-                value={provider}
-                onChange={(e) => {
-                  const id = e.target.value as ProviderId;
-                  setProvider(id);
-                  const def = PROVIDERS.find((p) => p.id === id);
-                  if (def) {
-                    setModel(def.defaultModel);
-                    setCustomModel('');
-                  }
-                }}
+          <div className="sidechat-body">
+            {controlsHidden && !controlsPinned && (
+              <button
+                type="button"
+                className="sidechat-btn sidechat-btn-icon sidechat-reveal-controls"
+                title="Mostrar opções"
+                aria-label="Mostrar opções"
+                onClick={() => setControlsPinned(true)}
               >
-                {PROVIDERS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                    {providersWithKey.includes(p.id) ? '' : ' (sem key)'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="sidechat-label">Modelo</label>
-              <select
-                className="sidechat-select"
-                value={model}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setModel(value);
-                  if (value !== MODEL_DIGITAR) {
-                    setCustomModel('');
-                  }
-                }}
-              >
-                {modelOptions.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-                <option value={MODEL_DIGITAR}>Digitar</option>
-              </select>
-            </div>
-          </div>
+                <CaretDown size={18} weight="bold" />
+              </button>
+            )}
 
-          {model === MODEL_DIGITAR && (
-            <div className="sidechat-field">
-              <label className="sidechat-label">Model id</label>
-              <input
-                className="sidechat-input"
-                value={customModel}
-                placeholder="ex: gpt-4.1"
-                onChange={(e) => setCustomModel(e.target.value)}
+            {controlsPinned && (
+              <div className="sidechat-controls sidechat-controls-pinned">
+                {renderControls()}
+              </div>
+            )}
+
+            <div ref={scrollRef} className="sidechat-scroll">
+              <div ref={controlsRef} className="sidechat-controls">
+                {renderControls()}
+              </div>
+
+              <MessageList
+                messages={session?.messages ?? []}
+                streamingText={streamingText || undefined}
               />
             </div>
-          )}
-
-          <MessageList
-            messages={session?.messages ?? []}
-            streamingText={streamingText || undefined}
-          />
+          </div>
 
           {error && <p className="sidechat-error">{error}</p>}
 

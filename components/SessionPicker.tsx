@@ -1,4 +1,5 @@
 import { Plus } from '@phosphor-icons/react';
+import { useId } from 'react';
 import type { ChatSession } from '../lib/storage/sessions';
 
 interface Props {
@@ -15,15 +16,16 @@ export function SessionPicker({
   onCreate,
 }: Props) {
   const isNew = currentId === null;
+  const selectId = useId();
 
   return (
     <div className="sidechat-field" style={{ marginBottom: 0 }}>
-      <label className="sidechat-label" htmlFor="sidechat-session-select">
+      <label className="sidechat-label" htmlFor={selectId}>
         Sessão
       </label>
       <div className="sidechat-session-row">
         <select
-          id="sidechat-session-select"
+          id={selectId}
           className="sidechat-select"
           value={currentId ?? ''}
           onChange={(e) => {
