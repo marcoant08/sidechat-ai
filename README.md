@@ -40,7 +40,7 @@ npm run build
 5. Defina **provider padrão** e **modelo LLM padrão** (ou um model id customizado).
 6. Salve as preferências.
 
-Sempre que o service worker reiniciar, será necessário desbloquear o cofre de novo antes de enviar mensagens.
+O desbloqueio dura a sessão do navegador (sobrevive ao restart do service worker). Ao fechar o navegador, o cofre bloqueia de novo.
 
 ## Usar
 
@@ -70,7 +70,7 @@ npm run build     # build de produção
 ## Privacidade e segurança
 
 - **Envio manual:** seleção e abertura do popup **não** chamam a API.
-- **Keys:** armazenadas cifradas (`AES-GCM` + senha mestre via `PBKDF2`) em `chrome.storage.local`. Em uso, ficam só na memória do service worker após o unlock.
+- **Keys:** armazenadas cifradas (`AES-GCM` + senha mestre via `PBKDF2`) em `chrome.storage.local`. Após o unlock, ficam também em `chrome.storage.session` (memória da sessão do navegador) para sobreviver ao restart do service worker MV3; limpam ao fechar o navegador ou ao bloquear.
 - **Keys nunca** são enviadas ao content script nem renderizadas depois de salvas.
 - **Histórico** fica só no navegador (`chrome.storage.local`), sem sync.
 - **Texto selecionado e mensagens** vão ao provider escolhido — não use com dados sensíveis.

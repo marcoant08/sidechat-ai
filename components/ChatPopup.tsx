@@ -3,7 +3,12 @@ import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { SessionPicker } from './SessionPicker';
 import { truncateSelection } from '../lib/limits';
-import { sendToBackground, type ServerMessage } from '../lib/messaging';
+import {
+  ExtensionContextInvalidatedError,
+  isExtensionContextValid,
+  sendToBackground,
+  type ServerMessage,
+} from '../lib/messaging';
 import { PROVIDERS, type ProviderId } from '../lib/providers/types';
 import type { ChatSession } from '../lib/storage/sessions';
 
@@ -30,50 +35,119 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [contextDead, setContextDead] = useState(false);
 
   const modelOptions = useMemo(() => {
     const def = PROVIDERS.find((p) => p.id === provider);
     return def?.models ?? [];
   }, [provider]);
 
-  const refreshVault = useCallback(async () => {
-    const res = await sendToBackground({ type: 'VAULT_STATUS' });
-    if (res.type === 'VAULT_STATUS_RESULT') {
-      setUnlocked(res.unlocked);
-      setProvidersWithKey(res.providersWithKey);
-    }
+  const handleContextDead = useCallback(() => {
+    setContextDead(true);
+    setError(
+      'Extensão foi recarregada. Atualize esta página (F5) para continuar.',
+    );
   }, []);
+
+  const refreshVault = useCallback(async () => {
+    if (!isExtensionContextValid()) {
+      handleContextDead();
+      return;
+    }
+    try {
+      const res = await sendToBackground({ type: 'VAULT_STATUS' });
+      if (res.type === 'VAULT_STATUS_RESULT') {
+        setUnlocked(res.unlocked);
+        setProvidersWithKey(res.providersWithKey);
+      }
+    } catch (err) {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+      }
+    }
+  }, [handleContextDead]);
 
   const refreshSessions = useCallback(async () => {
-    const res = await sendToBackground({ type: 'LIST_SESSIONS' });
-    if (res.type === 'SESSIONS_RESULT') {
-      setSessions(res.sessions as ChatSession[]);
+    if (!isExtensionContextValid()) {
+      handleContextDead();
+      return;
     }
-  }, []);
+    try {
+      const res = await sendToBackground({ type: 'LIST_SESSIONS' });
+      if (res.type === 'SESSIONS_RESULT') {
+        setSessions(res.sessions as ChatSession[]);
+      }
+    } catch (err) {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+      }
+    }
+  }, [handleContextDead]);
 
-  const loadSession = useCallback(async (id: string) => {
-    const res = await sendToBackground({ type: 'GET_SESSION', sessionId: id });
-    if (res.type === 'SESSION_RESULT' && res.session) {
-      const s = res.session as ChatSession;
-      setSession(s);
-      setSessionId(s.id);
-      setProvider(s.provider);
-      setModel(s.model);
-      setCustomModel('');
-    }
-  }, []);
+  const loadSession = useCallback(
+    async (id: string) => {
+      if (!isExtensionContextValid()) {
+        handleContextDead();
+        return;
+      }
+      try {
+        const res = await sendToBackground({
+          type: 'GET_SESSION',
+          sessionId: id,
+        });
+        if (res.type === 'SESSION_RESULT' && res.session) {
+          const s = res.session as ChatSession;
+          setSession(s);
+          setSessionId(s.id);
+          setProvider(s.provider);
+          setModel(s.model);
+          setCustomModel('');
+        }
+      } catch (err) {
+        if (err instanceof ExtensionContextInvalidatedError) {
+          handleContextDead();
+        }
+      }
+    },
+    [handleContextDead],
+  );
 
   useEffect(() => {
     void (async () => {
-      const settings = await sendToBackground({ type: 'GET_SETTINGS' });
-      if (settings.type === 'SETTINGS_RESULT') {
-        setProvider(settings.defaultProvider);
-        setModel(settings.defaultModel);
+      try {
+        const settings = await sendToBackground({ type: 'GET_SETTINGS' });
+        if (settings.type === 'SETTINGS_RESULT') {
+          setProvider(settings.defaultProvider);
+          setModel(settings.defaultModel);
+        }
+        await refreshVault();
+        await refreshSessions();
+      } catch (err) {
+        if (err instanceof ExtensionContextInvalidatedError) {
+          handleContextDead();
+        }
       }
-      await refreshVault();
-      await refreshSessions();
     })();
-  }, [refreshSessions, refreshVault]);
+  }, [handleContextDead, refreshSessions, refreshVault]);
+
+  // Reconsulta o cofre ao focar / periodicamente até desbloquear.
+  useEffect(() => {
+    if (contextDead || unlocked) return;
+
+    const onFocus = () => {
+      void refreshVault();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    const timer = window.setInterval(() => {
+      void refreshVault();
+    }, 2000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+      window.clearInterval(timer);
+    };
+  }, [contextDead, refreshVault, unlocked]);
 
   useEffect(() => {
     const listener = (raw: unknown) => {
@@ -122,6 +196,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
 
   const handleSend = async () => {
     setError(null);
+    if (contextDead || !isExtensionContextValid()) {
+      handleContextDead();
+      return;
+    }
     if (!unlocked) {
       setError('Cofre bloqueado. Abra Configurar e desbloqueie.');
       return;
@@ -152,6 +230,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       setComposer('');
     } catch (err) {
       setSending(false);
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Falha ao enviar.');
     }
   };
@@ -164,7 +246,14 @@ export function ChatPopup({ selectedText, onClose }: Props) {
           <button
             type="button"
             className="sidechat-btn"
-            onClick={() => void sendToBackground({ type: 'OPEN_OPTIONS' })}
+            disabled={contextDead}
+            onClick={() => {
+              void sendToBackground({ type: 'OPEN_OPTIONS' }).catch((err) => {
+                if (err instanceof ExtensionContextInvalidatedError) {
+                  handleContextDead();
+                }
+              });
+            }}
           >
             Configurar…
           </button>
@@ -174,7 +263,13 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         </div>
       </header>
 
-      {!unlocked && (
+      {contextDead && (
+        <p className="sidechat-error">
+          Extensão foi recarregada. Atualize esta página (F5) para continuar.
+        </p>
+      )}
+
+      {!contextDead && !unlocked && (
         <p className="sidechat-error">
           Cofre bloqueado. Use Configurar… para desbloquear e definir tokens.
         </p>
@@ -257,7 +352,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
 
       <Composer
         value={composer}
-        disabled={sending || !unlocked}
+        disabled={sending || !unlocked || contextDead}
         onChange={setComposer}
         onSend={() => void handleSend()}
       />

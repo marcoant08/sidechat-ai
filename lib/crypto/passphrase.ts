@@ -42,7 +42,7 @@ export async function deriveVaultKey(
     },
     baseKey,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true, // extractable: needed to keep unlock across MV3 SW restarts (session)
     ['encrypt', 'decrypt'],
   );
 }

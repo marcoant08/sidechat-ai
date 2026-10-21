@@ -51,7 +51,7 @@ async function handleChatSend(
     };
   }
 
-  const apiKey = getProviderApiKey(msg.provider);
+  const apiKey = await getProviderApiKey(msg.provider);
   if (!apiKey) {
     return {
       type: 'ERROR',
@@ -149,7 +149,7 @@ async function dispatch(
       return { type: 'OK' };
     }
     case 'VAULT_LOCK': {
-      lockVault();
+      await lockVault();
       return { type: 'OK' };
     }
     case 'VAULT_SET_KEY': {

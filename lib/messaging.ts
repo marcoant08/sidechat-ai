@@ -176,8 +176,39 @@ export function parseClientMessage(raw: unknown): ClientMessage {
   }
 }
 
+export class ExtensionContextInvalidatedError extends Error {
+  constructor() {
+    super('Extension context invalidated');
+    this.name = 'ExtensionContextInvalidatedError';
+  }
+}
+
+export function isExtensionContextValid(): boolean {
+  try {
+    return Boolean(browser.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
+function isContextInvalidatedError(err: unknown): boolean {
+  if (err instanceof ExtensionContextInvalidatedError) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes('Extension context invalidated');
+}
+
 export async function sendToBackground<T extends ServerMessage = ServerMessage>(
   message: ClientMessage,
 ): Promise<T> {
-  return browser.runtime.sendMessage(message) as Promise<T>;
+  if (!isExtensionContextValid()) {
+    throw new ExtensionContextInvalidatedError();
+  }
+  try {
+    return (await browser.runtime.sendMessage(message)) as T;
+  } catch (err) {
+    if (isContextInvalidatedError(err)) {
+      throw new ExtensionContextInvalidatedError();
+    }
+    throw err;
+  }
 }
