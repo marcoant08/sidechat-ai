@@ -511,14 +511,41 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   );
 
   const compact = !contextDead && !unlocked;
+  const chatMode = !contextDead && unlocked;
+  const headerSubtitle = (() => {
+    if (!unlocked) {
+      return configured ? 'Cofre bloqueado' : 'Configure o cofre';
+    }
+    const providerLabel =
+      PROVIDERS.find((p) => p.id === provider)?.label ?? provider;
+    const modelLabel = resolvedModel || session?.model || 'modelo';
+    return `${providerLabel} · ${modelLabel}`;
+  })();
 
   return (
     <div
-      className={`sidechat-root sidechat-popup${compact ? ' sidechat-popup-compact' : ''}`}
+      className={[
+        'sidechat-root',
+        'sidechat-popup',
+        compact ? 'sidechat-popup-compact' : '',
+        chatMode ? 'sidechat-popup-chat' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-theme={theme}
     >
       <header className="sidechat-popup-header">
-        <strong>🤖 sidechat-ai</strong>
+        <div className="sidechat-popup-brand">
+          <div className="sidechat-popup-avatar" aria-hidden>
+            🤖
+          </div>
+          <div className="sidechat-popup-titles">
+            <div className="sidechat-popup-title">sidechat-ai</div>
+            <div className="sidechat-popup-subtitle" title={headerSubtitle}>
+              {headerSubtitle}
+            </div>
+          </div>
+        </div>
         <div className="sidechat-popup-actions">
           <button
             type="button"

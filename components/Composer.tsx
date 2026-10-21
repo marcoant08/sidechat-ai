@@ -1,3 +1,5 @@
+import { PaperPlaneTilt } from '@phosphor-icons/react';
+
 interface Props {
   value: string;
   disabled?: boolean;
@@ -9,10 +11,12 @@ export function Composer({ value, disabled, onChange, onSend }: Props) {
   return (
     <div className="sidechat-composer">
       <textarea
-        className="sidechat-textarea"
+        className="sidechat-textarea sidechat-composer-input"
         value={value}
         disabled={disabled}
-        placeholder="Escreva sua mensagem… (só envia ao clicar em Enviar)"
+        rows={1}
+        placeholder="Mensagem"
+        aria-label="Mensagem"
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -23,11 +27,13 @@ export function Composer({ value, disabled, onChange, onSend }: Props) {
       />
       <button
         type="button"
-        className="sidechat-btn sidechat-btn-primary"
+        className="sidechat-composer-send"
         disabled={disabled || !value.trim()}
+        title="Enviar"
+        aria-label="Enviar"
         onClick={onSend}
       >
-        Enviar
+        <PaperPlaneTilt size={18} weight="fill" />
       </button>
     </div>
   );

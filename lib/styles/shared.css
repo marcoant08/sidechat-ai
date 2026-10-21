@@ -1,41 +1,55 @@
 :host,
 .sidechat-root {
-  --sc-bg: #f7f4ef;
-  --sc-surface: #fffdf9;
-  --sc-ink: #1c1917;
-  --sc-muted: #78716c;
-  --sc-accent: #0f766e;
+  --sc-bg: #f3f0ea;
+  --sc-surface: #fffcf7;
+  --sc-ink: #14181f;
+  --sc-muted: #5c6570;
+  --sc-accent: #0d9488;
   --sc-accent-ink: #f0fdfa;
-  --sc-border: #e7e5e4;
+  --sc-accent-soft: rgba(13, 148, 136, 0.14);
+  --sc-border: #ddd6cb;
   --sc-danger: #b91c1c;
-  --sc-input-bg: #fff;
-  --sc-bubble-user: #d9fdd3;
+  --sc-input-bg: #ffffff;
+  --sc-bubble-user: #d1fae5;
   --sc-bubble-assistant: #ffffff;
-  --sc-bubble-ink: #1c1917;
-  --sc-messages-bg: #f4f1ea;
-  --sc-empty-bg: rgba(255, 255, 255, 0.88);
-  --sc-radius: 10px;
+  --sc-bubble-ink: #14181f;
+  --sc-messages-bg: #ebe4d8;
+  --sc-empty-bg: rgba(255, 252, 247, 0.92);
+  --sc-header-bg: #0f766e;
+  --sc-header-ink: #f0fdfa;
+  --sc-header-muted: rgba(240, 253, 250, 0.78);
+  --sc-composer-bg: #f3f0ea;
+  --sc-focus: #0d9488;
+  --sc-radius: 14px;
   --sc-font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sc-font-mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
   font-family: var(--sc-font);
   color: var(--sc-ink);
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
 .sidechat-root[data-theme='dark'] {
-  --sc-bg: #12151c;
-  --sc-surface: #1a1f2b;
-  --sc-ink: #e8eaed;
-  --sc-muted: #9aa3b2;
+  --sc-bg: #0e1219;
+  --sc-surface: #171d28;
+  --sc-ink: #e8edf5;
+  --sc-muted: #93a0b4;
   --sc-accent: #2dd4bf;
   --sc-accent-ink: #042f2e;
-  --sc-border: #2a3142;
+  --sc-accent-soft: rgba(45, 212, 191, 0.16);
+  --sc-border: #2a3344;
   --sc-danger: #f87171;
-  --sc-input-bg: #0f131a;
-  --sc-bubble-user: #005c4b;
-  --sc-bubble-assistant: #1f2737;
-  --sc-bubble-ink: #e8eaed;
+  --sc-input-bg: #121822;
+  --sc-bubble-user: #0f5c4f;
+  --sc-bubble-assistant: #1c2433;
+  --sc-bubble-ink: #e8edf5;
   --sc-messages-bg: #0a0c10;
-  --sc-empty-bg: rgba(26, 31, 43, 0.9);
+  --sc-empty-bg: rgba(23, 29, 40, 0.92);
+  --sc-header-bg: #0b3d38;
+  --sc-header-ink: #ecfdf8;
+  --sc-header-muted: rgba(236, 253, 248, 0.72);
+  --sc-composer-bg: #121822;
+  --sc-focus: #2dd4bf;
 }
 
 .sidechat-root *,
@@ -44,20 +58,34 @@
   box-sizing: border-box;
 }
 
+.sidechat-root ::selection {
+  background: var(--sc-accent-soft);
+  color: var(--sc-ink);
+}
+
 .sidechat-btn {
   appearance: none;
   border: 1px solid var(--sc-border);
   background: var(--sc-surface);
   color: var(--sc-ink);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.45rem 0.75rem;
   font: inherit;
   font-size: 0.875rem;
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
 }
 
 .sidechat-btn:hover:not(:disabled) {
   border-color: var(--sc-accent);
+}
+
+.sidechat-btn:focus-visible {
+  outline: 2px solid var(--sc-focus);
+  outline-offset: 2px;
 }
 
 .sidechat-btn:disabled {
@@ -72,7 +100,7 @@
 }
 
 .sidechat-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
 }
 
 .sidechat-btn-icon {
@@ -91,32 +119,47 @@
   border: 1px solid var(--sc-border);
   background: var(--sc-input-bg);
   color: var(--sc-ink);
-  border-radius: 8px;
-  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
   font: inherit;
   font-size: 0.875rem;
+  caret-color: var(--sc-accent);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sidechat-input:focus,
+.sidechat-select:focus,
+.sidechat-textarea:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 3px var(--sc-accent-soft);
 }
 
 .sidechat-textarea {
-  min-height: 72px;
-  resize: vertical;
+  min-height: 44px;
+  max-height: 120px;
+  resize: none;
+  line-height: 1.4;
 }
 
 .sidechat-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--sc-muted);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.28rem;
 }
 
 .sidechat-field {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
 .sidechat-error {
   color: var(--sc-danger);
   font-size: 0.8rem;
-  margin: 0.5rem 0;
+  margin: 0.4rem 0.75rem;
 }
 
 .sidechat-muted {

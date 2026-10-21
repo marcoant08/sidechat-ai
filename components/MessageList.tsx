@@ -74,7 +74,7 @@ export function MessageList({
     >
       {messages.length === 0 && !streamingText && (
         <p className="sidechat-messages-empty">
-          Nenhuma mensagem ainda. Edite o texto e clique em Enviar.
+          Selecione um texto, ajuste a mensagem e envie.
         </p>
       )}
       {messages.map((m, i) => (
