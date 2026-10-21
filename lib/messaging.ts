@@ -22,6 +22,7 @@ export type ClientMessage =
       title?: string;
       provider: ProviderId;
       model: string;
+      pageUrl?: string;
     }
   | {
       type: 'UPDATE_SESSION';
@@ -137,7 +138,17 @@ export function parseClientMessage(raw: unknown): ClientMessage {
       if (!isNonEmptyString(msg.model, 200)) throw new Error('Modelo inválido.');
       const title =
         typeof msg.title === 'string' ? msg.title.slice(0, 80) : undefined;
-      return { type, provider: msg.provider, model: msg.model, title };
+      const pageUrl =
+        typeof msg.pageUrl === 'string'
+          ? msg.pageUrl.slice(0, 2048)
+          : undefined;
+      return {
+        type,
+        provider: msg.provider,
+        model: msg.model,
+        title,
+        pageUrl,
+      };
     }
 
     case 'UPDATE_SESSION': {

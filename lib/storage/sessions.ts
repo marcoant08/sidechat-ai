@@ -16,6 +16,8 @@ export interface ChatSession {
   title: string;
   provider: ProviderId;
   model: string;
+  /** Page where the session was created (origin + path + search). */
+  pageUrl?: string;
   createdAt: number;
   updatedAt: number;
   messages: SessionMessage[];
@@ -52,14 +54,17 @@ export async function createSession(input: {
   title?: string;
   provider: ProviderId;
   model: string;
+  pageUrl?: string;
 }): Promise<ChatSession> {
   if (!isProviderId(input.provider)) throw new Error('Provider inválido.');
   const now = Date.now();
+  const pageUrl = input.pageUrl?.trim().slice(0, 2048) || undefined;
   const session: ChatSession = {
     id: newId(),
     title: (input.title?.trim() || 'Nova sessão').slice(0, 80),
     provider: input.provider,
     model: input.model.trim(),
+    pageUrl,
     createdAt: now,
     updatedAt: now,
     messages: [],

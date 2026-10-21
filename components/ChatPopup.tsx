@@ -15,6 +15,7 @@ import {
   MODEL_DIGITAR,
   resolveModelSelection,
 } from '../lib/models';
+import { getPageKey } from '../lib/page';
 import { PROVIDERS, type ProviderId } from '../lib/providers/types';
 import type { ThemeId } from '../lib/storage/settings';
 import type { ChatSession } from '../lib/storage/sessions';
@@ -118,6 +119,8 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     }
   }, [handleContextDead]);
 
+  const pageKey = useMemo(() => getPageKey(), []);
+
   const refreshSessions = useCallback(
     async (opts?: { selectLatest?: boolean }) => {
       if (!isExtensionContextValid()) {
@@ -129,8 +132,11 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         if (res.type === 'SESSIONS_RESULT') {
           const list = res.sessions as ChatSession[];
           setSessions(list);
-          if (opts?.selectLatest && list[0]) {
-            await loadSession(list[0].id);
+          if (opts?.selectLatest) {
+            const latestOnPage = list.find((s) => s.pageUrl === pageKey);
+            if (latestOnPage) {
+              await loadSession(latestOnPage.id);
+            }
           }
         }
       } catch (err) {
@@ -139,7 +145,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         }
       }
     },
-    [handleContextDead, loadSession],
+    [handleContextDead, loadSession, pageKey],
   );
 
   useEffect(() => {
@@ -254,6 +260,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       provider,
       model: resolvedModel,
       title: truncated.text.slice(0, 60) || 'Nova sessão',
+      pageUrl: pageKey,
     });
     if (res.type !== 'SESSION_RESULT' || !res.session) {
       throw new Error(

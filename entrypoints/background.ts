@@ -191,6 +191,7 @@ async function dispatch(
         title: message.title,
         provider: message.provider,
         model: message.model,
+        pageUrl: message.pageUrl,
       });
       return { type: 'SESSION_RESULT', session };
     }
