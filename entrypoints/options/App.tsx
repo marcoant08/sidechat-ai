@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { sendToBackground } from '../../lib/messaging';
+import {
+  effectiveModelId,
+  MODEL_DIGITAR,
+  resolveModelSelection,
+} from '../../lib/models';
 import { PROVIDERS, type ProviderId } from '../../lib/providers/types';
 
 export default function App() {
@@ -34,7 +39,11 @@ export default function App() {
     const settings = await sendToBackground({ type: 'GET_SETTINGS' });
     if (settings.type === 'SETTINGS_RESULT') {
       setDefaultProvider(settings.defaultProvider);
-      setDefaultModel(settings.defaultModel);
+      const known =
+        PROVIDERS.find((p) => p.id === settings.defaultProvider)?.models ?? [];
+      const resolved = resolveModelSelection(settings.defaultModel, known);
+      setDefaultModel(resolved.selectValue);
+      setCustomModel(resolved.customModel);
     }
   }, []);
 
@@ -107,7 +116,11 @@ export default function App() {
   };
 
   const handleSaveSettings = async () => {
-    const model = customModel.trim() || defaultModel;
+    const model = effectiveModelId(defaultModel, customModel);
+    if (!model) {
+      showErr('Informe o model id.');
+      return;
+    }
     const res = await sendToBackground({
       type: 'SAVE_SETTINGS',
       defaultProvider,
@@ -117,8 +130,6 @@ export default function App() {
       showErr(res.error);
       return;
     }
-    setDefaultModel(model);
-    setCustomModel('');
     showOk('Preferências salvas.');
     await refresh();
   };
@@ -135,7 +146,7 @@ export default function App() {
 
   return (
     <div className="sidechat-root opts-wrap">
-      <h1>Sidechat AI — Configurações</h1>
+      <h1>🤖 sidechat-ai — Configurações</h1>
       <p className="sidechat-muted">
         Defina a senha mestre, API keys/tokens, provider e modelo padrão.
       </p>
@@ -285,7 +296,10 @@ export default function App() {
               const id = e.target.value as ProviderId;
               setDefaultProvider(id);
               const def = PROVIDERS.find((p) => p.id === id);
-              if (def) setDefaultModel(def.defaultModel);
+              if (def) {
+                setDefaultModel(def.defaultModel);
+                setCustomModel('');
+              }
             }}
           >
             {PROVIDERS.map((p) => (
@@ -299,25 +313,34 @@ export default function App() {
           <label className="sidechat-label">Modelo padrão</label>
           <select
             className="sidechat-select"
-            value={models.includes(defaultModel) ? defaultModel : models[0]}
-            onChange={(e) => setDefaultModel(e.target.value)}
+            value={defaultModel}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDefaultModel(value);
+              if (value !== MODEL_DIGITAR) {
+                setCustomModel('');
+              }
+            }}
           >
             {models.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>
             ))}
+            <option value={MODEL_DIGITAR}>Digitar</option>
           </select>
         </div>
-        <div className="sidechat-field">
-          <label className="sidechat-label">Model id customizado (opcional)</label>
-          <input
-            className="sidechat-input"
-            value={customModel}
-            placeholder="sobrescreve a lista acima"
-            onChange={(e) => setCustomModel(e.target.value)}
-          />
-        </div>
+        {defaultModel === MODEL_DIGITAR && (
+          <div className="sidechat-field">
+            <label className="sidechat-label">Model id</label>
+            <input
+              className="sidechat-input"
+              value={customModel}
+              placeholder="ex: gpt-4.1"
+              onChange={(e) => setCustomModel(e.target.value)}
+            />
+          </div>
+        )}
         <button
           type="button"
           className="sidechat-btn sidechat-btn-primary"

@@ -9,10 +9,15 @@
   border: 1px solid #0f766e;
   background: #0f766e;
   color: #f0fdfa;
-  font: 700 12px/1 "IBM Plex Sans", "Segoe UI", sans-serif;
+  font: 16px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+    sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
   transform: translate(-50%, -120%);
+  padding: 0;
 }
 
 .sidechat-fab:hover {

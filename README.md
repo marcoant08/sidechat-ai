@@ -1,11 +1,11 @@
-# Sidechat AI
+# 🤖 sidechat-ai
 
 Extensão para **Chrome** e **Brave** que facilita conversar com LLMs a partir de texto selecionado em qualquer página — no estilo do botão do Google Tradutor, mas com chat.
 
 ## O que faz
 
 1. Você seleciona um texto na página.
-2. Aparece um botão **AI**.
+2. Aparece um botão **🤖**.
 3. Ao clicar, abre um popup de chat com o texto pré-preenchido.
 4. Você escolhe/cria uma sessão, ajusta provider/modelo se quiser, edita a mensagem e só então clica em **Enviar**.
 5. Nada é enviado à API até o clique em **Enviar**.

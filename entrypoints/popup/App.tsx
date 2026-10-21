@@ -21,9 +21,9 @@ export default function App() {
 
   return (
     <div className="popup-root sidechat-root">
-      <h1>Sidechat AI</h1>
+      <h1>🤖 sidechat-ai</h1>
       <p className="sidechat-muted">
-        Selecione texto em qualquer página, clique no botão AI e envie no chat.
+        Selecione texto em qualquer página, clique no 🤖 e envie no chat.
       </p>
 
       <div className="popup-status">

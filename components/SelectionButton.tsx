@@ -10,11 +10,12 @@ export function SelectionButton({ x, y, onClick }: Props) {
       type="button"
       className="sidechat-fab"
       style={{ left: x, top: y }}
-      title="Sidechat AI"
+      title="sidechat-ai"
+      aria-label="Abrir sidechat-ai"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
-      AI
+      🤖
     </button>
   );
 }

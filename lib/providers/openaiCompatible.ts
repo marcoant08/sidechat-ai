@@ -16,7 +16,7 @@ export async function* streamOpenAICompatible(
   };
   if (provider === 'openrouter') {
     headers['HTTP-Referer'] = 'https://sidechat-ai.local';
-    headers['X-Title'] = 'Sidechat AI';
+    headers['X-Title'] = 'sidechat-ai';
   }
 
   const response = await fetch(ENDPOINTS[provider], {

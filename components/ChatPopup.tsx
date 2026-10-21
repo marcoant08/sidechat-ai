@@ -1,3 +1,4 @@
+import { GearSix, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -9,6 +10,11 @@ import {
   sendToBackground,
   type ServerMessage,
 } from '../lib/messaging';
+import {
+  effectiveModelId,
+  MODEL_DIGITAR,
+  resolveModelSelection,
+} from '../lib/models';
 import { PROVIDERS, type ProviderId } from '../lib/providers/types';
 import type { ChatSession } from '../lib/storage/sessions';
 
@@ -84,6 +90,12 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     }
   }, [handleContextDead]);
 
+  const applyModel = useCallback((modelId: string, known: string[]) => {
+    const resolved = resolveModelSelection(modelId, known);
+    setModel(resolved.selectValue);
+    setCustomModel(resolved.customModel);
+  }, []);
+
   const loadSession = useCallback(
     async (id: string) => {
       if (!isExtensionContextValid()) {
@@ -100,8 +112,9 @@ export function ChatPopup({ selectedText, onClose }: Props) {
           setSession(s);
           setSessionId(s.id);
           setProvider(s.provider);
-          setModel(s.model);
-          setCustomModel('');
+          const known =
+            PROVIDERS.find((p) => p.id === s.provider)?.models ?? [];
+          applyModel(s.model, known);
         }
       } catch (err) {
         if (err instanceof ExtensionContextInvalidatedError) {
@@ -109,7 +122,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         }
       }
     },
-    [handleContextDead],
+    [applyModel, handleContextDead],
   );
 
   useEffect(() => {
@@ -118,7 +131,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         const settings = await sendToBackground({ type: 'GET_SETTINGS' });
         if (settings.type === 'SETTINGS_RESULT') {
           setProvider(settings.defaultProvider);
-          setModel(settings.defaultModel);
+          const known =
+            PROVIDERS.find((p) => p.id === settings.defaultProvider)?.models ??
+            [];
+          applyModel(settings.defaultModel, known);
         }
         await refreshVault();
         await refreshSessions();
@@ -128,7 +144,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         }
       }
     })();
-  }, [handleContextDead, refreshSessions, refreshVault]);
+  }, [applyModel, handleContextDead, refreshSessions, refreshVault]);
 
   // Reconsulta o cofre ao focar / periodicamente até desbloquear.
   useEffect(() => {
@@ -172,14 +188,14 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     return () => browser.runtime.onMessage.removeListener(listener);
   }, [loadSession, refreshSessions, sessionId]);
 
-  const effectiveModel = customModel.trim() || model;
+  const resolvedModel = effectiveModelId(model, customModel);
 
   const ensureSession = async (): Promise<string> => {
     if (sessionId) return sessionId;
     const res = await sendToBackground({
       type: 'CREATE_SESSION',
       provider,
-      model: effectiveModel,
+      model: resolvedModel,
       title: truncated.text.slice(0, 60) || 'Nova sessão',
     });
     if (res.type !== 'SESSION_RESULT' || !res.session) {
@@ -208,6 +224,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       setError(`Configure a API key de ${provider} nas Options.`);
       return;
     }
+    if (!resolvedModel) {
+      setError('Informe o model id.');
+      return;
+    }
     const content = composer.trim();
     if (!content) return;
 
@@ -220,7 +240,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         sessionId: id,
         content,
         provider,
-        model: effectiveModel,
+        model: resolvedModel,
       });
       if (res.type === 'ERROR') {
         setSending(false);
@@ -241,11 +261,13 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   return (
     <div className="sidechat-root sidechat-popup">
       <header className="sidechat-popup-header">
-        <strong>Sidechat AI</strong>
+        <strong>🤖 sidechat-ai</strong>
         <div className="sidechat-popup-actions">
           <button
             type="button"
-            className="sidechat-btn"
+            className="sidechat-btn sidechat-btn-icon"
+            title="Configurar"
+            aria-label="Configurar"
             disabled={contextDead}
             onClick={() => {
               void sendToBackground({ type: 'OPEN_OPTIONS' }).catch((err) => {
@@ -255,10 +277,16 @@ export function ChatPopup({ selectedText, onClose }: Props) {
               });
             }}
           >
-            Configurar…
+            <GearSix size={18} weight="bold" />
           </button>
-          <button type="button" className="sidechat-btn" onClick={onClose}>
-            Fechar
+          <button
+            type="button"
+            className="sidechat-btn sidechat-btn-icon"
+            title="Fechar"
+            aria-label="Fechar"
+            onClick={onClose}
+          >
+            <X size={18} weight="bold" />
           </button>
         </div>
       </header>
@@ -271,7 +299,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
 
       {!contextDead && !unlocked && (
         <p className="sidechat-error">
-          Cofre bloqueado. Use Configurar… para desbloquear e definir tokens.
+          Cofre bloqueado. Use Configurar para desbloquear e definir tokens.
         </p>
       )}
 
@@ -302,8 +330,10 @@ export function ChatPopup({ selectedText, onClose }: Props) {
               const id = e.target.value as ProviderId;
               setProvider(id);
               const def = PROVIDERS.find((p) => p.id === id);
-              if (def) setModel(def.defaultModel);
-              setCustomModel('');
+              if (def) {
+                setModel(def.defaultModel);
+                setCustomModel('');
+              }
             }}
           >
             {PROVIDERS.map((p) => (
@@ -318,10 +348,13 @@ export function ChatPopup({ selectedText, onClose }: Props) {
           <label className="sidechat-label">Modelo</label>
           <select
             className="sidechat-select"
-            value={modelOptions.includes(model) ? model : modelOptions[0]}
+            value={model}
             onChange={(e) => {
-              setModel(e.target.value);
-              setCustomModel('');
+              const value = e.target.value;
+              setModel(value);
+              if (value !== MODEL_DIGITAR) {
+                setCustomModel('');
+              }
             }}
           >
             {modelOptions.map((m) => (
@@ -329,19 +362,22 @@ export function ChatPopup({ selectedText, onClose }: Props) {
                 {m}
               </option>
             ))}
+            <option value={MODEL_DIGITAR}>Digitar</option>
           </select>
         </div>
       </div>
 
-      <div className="sidechat-field">
-        <label className="sidechat-label">Model id customizado (opcional)</label>
-        <input
-          className="sidechat-input"
-          value={customModel}
-          placeholder="ex: gpt-4.1"
-          onChange={(e) => setCustomModel(e.target.value)}
-        />
-      </div>
+      {model === MODEL_DIGITAR && (
+        <div className="sidechat-field">
+          <label className="sidechat-label">Model id</label>
+          <input
+            className="sidechat-input"
+            value={customModel}
+            placeholder="ex: gpt-4.1"
+            onChange={(e) => setCustomModel(e.target.value)}
+          />
+        </div>
+      )}
 
       <MessageList
         messages={session?.messages ?? []}
