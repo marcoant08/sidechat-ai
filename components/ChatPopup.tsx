@@ -52,6 +52,17 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   const [theme, setTheme] = useState<ThemeId>('light');
   const scrollRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  /** Texto completo recebido da API (ainda pode crescer durante o stream). */
+  const streamFullRef = useRef('');
+  const streamStartRef = useRef<number | null>(null);
+  const streamDoneSessionRef = useRef<string | null>(null);
+
+  const resetStreamReveal = useCallback(() => {
+    streamFullRef.current = '';
+    streamStartRef.current = null;
+    streamDoneSessionRef.current = null;
+    setStreamingText('');
+  }, []);
 
   const modelOptions = useMemo(() => {
     const def = PROVIDERS.find((p) => p.id === provider);
@@ -194,23 +205,66 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       const msg = raw as ServerMessage;
       if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
       if (msg.type === 'CHAT_CHUNK' && msg.sessionId === sessionId) {
-        setStreamingText((prev) => prev + msg.delta);
+        if (streamStartRef.current === null) {
+          streamStartRef.current = performance.now();
+        }
+        streamFullRef.current += msg.delta;
       }
       if (msg.type === 'CHAT_DONE' && msg.sessionId === sessionId) {
-        setStreamingText('');
-        setSending(false);
-        void loadSession(msg.sessionId);
-        void refreshSessions();
+        if (streamStartRef.current === null) {
+          streamStartRef.current = performance.now();
+        }
+        streamDoneSessionRef.current = msg.sessionId;
       }
       if (msg.type === 'CHAT_ERROR' && msg.sessionId === sessionId) {
-        setStreamingText('');
+        resetStreamReveal();
         setSending(false);
         setError(msg.error);
       }
     };
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
-  }, [loadSession, refreshSessions, sessionId]);
+  }, [resetStreamReveal, sessionId]);
+
+  // Revela o texto em ~1s (curto) ou ~2s (longo), proporcional ao tamanho.
+  useEffect(() => {
+    const SMALL_MAX_CHARS = 320;
+    const TICK_MS = 32;
+
+    const timer = window.setInterval(() => {
+      const full = streamFullRef.current;
+      const start = streamStartRef.current;
+      if (!full || start === null) return;
+
+      const targetMs = full.length > SMALL_MAX_CHARS ? 2000 : 1000;
+      const doneSessionId = streamDoneSessionRef.current;
+      const elapsed = performance.now() - start;
+      let progress = elapsed / targetMs;
+
+      // Enquanto a API ainda envia tokens, não chega a 100% cedo demais.
+      if (!doneSessionId) {
+        progress = Math.min(progress, 0.9);
+      }
+
+      const visible = Math.min(
+        full.length,
+        Math.floor(full.length * Math.min(1, Math.max(0, progress))),
+      );
+      setStreamingText(full.slice(0, visible));
+
+      if (doneSessionId && progress >= 1) {
+        streamDoneSessionRef.current = null;
+        streamFullRef.current = '';
+        streamStartRef.current = null;
+        setStreamingText('');
+        setSending(false);
+        void loadSession(doneSessionId);
+        void refreshSessions();
+      }
+    }, TICK_MS);
+
+    return () => window.clearInterval(timer);
+  }, [loadSession, refreshSessions]);
 
   useEffect(() => {
     if (!unlocked || contextDead) {
@@ -332,7 +386,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     if (!content) return;
 
     setSending(true);
-    setStreamingText('');
+    resetStreamReveal();
     try {
       const id = await ensureSession();
       const res = await sendToBackground({
@@ -391,7 +445,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         onCreate={() => {
           setSessionId(null);
           setSession(null);
-          setStreamingText('');
+          resetStreamReveal();
         }}
       />
 
