@@ -36,7 +36,7 @@
 }
 
 .sidechat-popup {
-  position: fixed;
+  position: relative;
   z-index: 2147483647;
   width: min(392px, calc(100vw - 20px));
   height: min(560px, calc(100vh - 20px));
@@ -84,6 +84,19 @@
   background: var(--sc-header-bg);
   color: var(--sc-header-ink);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.sidechat-popup-header:active {
+  cursor: grabbing;
+}
+
+.sidechat-popup-header button,
+.sidechat-popup-header button * {
+  cursor: pointer;
+  touch-action: auto;
 }
 
 .sidechat-popup-compact .sidechat-popup-header {

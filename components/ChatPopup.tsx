@@ -1,5 +1,12 @@
 import { CaretDown, GearSix, Moon, Sun, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { SessionPicker } from './SessionPicker';
@@ -23,9 +30,14 @@ import type { ChatSession } from '../lib/storage/sessions';
 interface Props {
   selectedText: string;
   onClose: () => void;
+  onHeaderPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
 }
 
-export function ChatPopup({ selectedText, onClose }: Props) {
+export function ChatPopup({
+  selectedText,
+  onClose,
+  onHeaderPointerDown,
+}: Props) {
   const truncated = useMemo(
     () => truncateSelection(selectedText.trim()),
     [selectedText],
@@ -534,7 +546,14 @@ export function ChatPopup({ selectedText, onClose }: Props) {
         .join(' ')}
       data-theme={theme}
     >
-      <header className="sidechat-popup-header">
+      <header
+        className="sidechat-popup-header"
+        onPointerDown={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest('button')) return;
+          onHeaderPointerDown?.(event);
+        }}
+      >
         <div className="sidechat-popup-brand">
           <div className="sidechat-popup-avatar" aria-hidden>
             🤖
