@@ -234,6 +234,14 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     return () => root.removeEventListener('scroll', onScroll);
   }, [controlsPinned]);
 
+  // Mantém a conversa no fim enquanto a resposta aparece (streaming).
+  useEffect(() => {
+    if (!unlocked) return;
+    const root = scrollRef.current;
+    if (!root) return;
+    root.scrollTop = root.scrollHeight;
+  }, [unlocked, streamingText, session?.messages]);
+
   const resolvedModel = effectiveModelId(model, customModel);
 
   const ensureSession = async (): Promise<string> => {
@@ -544,6 +552,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
               <MessageList
                 messages={session?.messages ?? []}
                 streamingText={streamingText || undefined}
+                model={session?.model || resolvedModel}
               />
             </div>
           </div>

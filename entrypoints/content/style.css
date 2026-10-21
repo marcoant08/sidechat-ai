@@ -180,11 +180,25 @@
 }
 
 .sidechat-bubble-name {
-  font-size: 0.7rem;
-  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.28rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.sidechat-bubble-name-label {
+  font-size: inherit;
+  font-weight: 700;
   color: #0f766e;
-  margin-bottom: 0.2rem;
-  line-height: 1.2;
+}
+
+.sidechat-bubble-name-model {
+  font-size: 0.8em;
+  font-weight: 400;
+  color: #78716c;
 }
 
 .sidechat-bubble-meta {
@@ -204,7 +218,7 @@
 
 .sidechat-bubble-check {
   flex-shrink: 0;
-  color: #0f766e;
+  color: #00bfff;
 }
 
 .sidechat-bubble-user {

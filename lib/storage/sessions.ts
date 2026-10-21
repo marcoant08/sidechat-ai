@@ -7,6 +7,8 @@ export interface SessionMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: number;
+  /** Model id that produced the message (assistant replies). */
+  model?: string;
 }
 
 export interface ChatSession {

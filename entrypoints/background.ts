@@ -111,6 +111,7 @@ async function handleChatSend(
           role: 'assistant',
           content: fullText,
           createdAt: Date.now(),
+          model,
         },
       ]);
       await notifyTab(tabId, {

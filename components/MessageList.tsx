@@ -1,10 +1,21 @@
 import { Check } from '@phosphor-icons/react';
 import { useMemo } from 'react';
+import { MODEL_DIGITAR } from '../lib/models';
 import type { SessionMessage } from '../lib/storage/sessions';
 
 interface Props {
   messages: SessionMessage[];
   streamingText?: string;
+  /** Fallback model for streaming / legacy messages without per-message model. */
+  model?: string;
+}
+
+function resolveDisplayModel(...candidates: Array<string | undefined>): string | undefined {
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed && trimmed !== MODEL_DIGITAR) return trimmed;
+  }
+  return undefined;
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -26,7 +37,19 @@ function formatMessageTime(timestamp: number, now = Date.now()): string {
   });
 }
 
-export function MessageList({ messages, streamingText }: Props) {
+function AssistantName({ model }: { model?: string }) {
+  const displayModel = resolveDisplayModel(model);
+  return (
+    <div className="sidechat-bubble-name">
+      <span className="sidechat-bubble-name-label">Assistente</span>
+      {displayModel ? (
+        <span className="sidechat-bubble-name-model">({displayModel})</span>
+      ) : null}
+    </div>
+  );
+}
+
+export function MessageList({ messages, streamingText, model }: Props) {
   const wallpaperUrl = useMemo(
     () => browser.runtime.getURL('/chat-wallpaper.png'),
     [],
@@ -49,7 +72,9 @@ export function MessageList({ messages, streamingText }: Props) {
         >
           <div className={`sidechat-bubble sidechat-bubble-${m.role}`}>
             {m.role === 'assistant' && (
-              <div className="sidechat-bubble-name">Assistente</div>
+              <AssistantName
+                model={resolveDisplayModel(m.model, model)}
+              />
             )}
             <p className="sidechat-msg">{m.content}</p>
             <div className="sidechat-bubble-meta">
@@ -71,7 +96,7 @@ export function MessageList({ messages, streamingText }: Props) {
       {streamingText ? (
         <div className="sidechat-msg-row sidechat-msg-row-assistant">
           <div className="sidechat-bubble sidechat-bubble-assistant">
-            <div className="sidechat-bubble-name">Assistente</div>
+            <AssistantName model={model} />
             <p className="sidechat-msg">{streamingText}</p>
             <div className="sidechat-bubble-meta">
               <span className="sidechat-bubble-time">
