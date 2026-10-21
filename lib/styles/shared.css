@@ -103,7 +103,10 @@
 
 .sidechat-msg {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
   font-size: 0.875rem;
   line-height: 1.45;
   margin: 0;

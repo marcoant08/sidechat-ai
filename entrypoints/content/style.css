@@ -63,6 +63,7 @@
 .sidechat-body {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -70,6 +71,7 @@
 
 .sidechat-scroll {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   display: flex;
@@ -122,16 +124,23 @@
 }
 
 .sidechat-messages {
-  flex: 1;
+  flex: 1 0 auto;
+  min-width: 0;
   min-height: 160px;
+  max-width: 100%;
+  width: 100%;
   padding: 0.5rem;
   background: var(--sc-surface);
   border: 1px solid var(--sc-border);
   border-radius: 8px;
+  overflow-wrap: anywhere;
 }
 
 .sidechat-bubble {
   margin-bottom: 0.65rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sidechat-bubble-role {
