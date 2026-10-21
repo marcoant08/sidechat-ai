@@ -13,6 +13,12 @@ export default defineConfig({
       'https://api.anthropic.com/*',
       'https://openrouter.ai/*',
     ],
+    web_accessible_resources: [
+      {
+        resources: ['chat-wallpaper.png'],
+        matches: ['*://*/*'],
+      },
+    ],
   },
 });
 

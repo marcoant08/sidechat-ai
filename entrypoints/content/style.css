@@ -126,27 +126,67 @@
 .sidechat-messages {
   flex: 1 0 auto;
   min-width: 0;
-  min-height: 160px;
+  min-height: 180px;
   max-width: 100%;
   width: 100%;
-  padding: 0.5rem;
-  background: var(--sc-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0.55rem;
   border: 1px solid var(--sc-border);
   border-radius: 8px;
   overflow-wrap: anywhere;
+  background-color: #f4f1ea;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.sidechat-messages-empty {
+  align-self: center;
+  margin: 1.25rem 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--sc-muted);
+  font-size: 0.78rem;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+}
+
+.sidechat-msg-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.sidechat-msg-row-user {
+  justify-content: flex-start;
+}
+
+.sidechat-msg-row-assistant {
+  justify-content: flex-end;
 }
 
 .sidechat-bubble {
-  margin-bottom: 0.65rem;
-  max-width: 100%;
+  max-width: min(86%, 280px);
   min-width: 0;
+  padding: 0.4rem 0.6rem 0.45rem;
+  border-radius: 10px;
+  box-shadow: 0 1px 1.5px rgba(28, 25, 23, 0.12);
   overflow-wrap: anywhere;
 }
 
-.sidechat-bubble-role {
-  font-size: 0.7rem;
-  color: var(--sc-muted);
-  margin-bottom: 0.15rem;
+.sidechat-bubble-user {
+  background: #d9fdd3;
+  color: #1c1917;
+  border-top-left-radius: 3px;
+}
+
+.sidechat-bubble-assistant {
+  background: #ffffff;
+  color: #1c1917;
+  border-top-right-radius: 3px;
 }
 
 .sidechat-composer {
