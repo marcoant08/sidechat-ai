@@ -173,7 +173,9 @@
   min-width: 0;
   padding: 0.4rem 0.6rem 0.45rem;
   border-radius: 10px;
-  box-shadow: 0 1px 1.5px rgba(28, 25, 23, 0.12);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.14),
+    0 4px 12px rgba(28, 25, 23, 0.1);
   overflow-wrap: anywhere;
 }
 
@@ -183,6 +185,26 @@
   color: #0f766e;
   margin-bottom: 0.2rem;
   line-height: 1.2;
+}
+
+.sidechat-bubble-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: #78716c;
+}
+
+.sidechat-bubble-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.sidechat-bubble-check {
+  flex-shrink: 0;
+  color: #0f766e;
 }
 
 .sidechat-bubble-user {
