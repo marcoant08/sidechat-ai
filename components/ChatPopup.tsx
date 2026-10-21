@@ -23,9 +23,17 @@ import {
   resolveModelSelection,
 } from '../lib/models';
 import { getPageKey } from '../lib/page';
-import { PROVIDERS, type ProviderId } from '../lib/providers/types';
-import type { ThemeId } from '../lib/storage/settings';
-import type { ChatSession } from '../lib/storage/sessions';
+import { getProvider, PROVIDERS, type ProviderId } from '../lib/providers/types';
+import {
+  defaultProviderModels,
+  getModelsForProvider,
+  type ProviderModelLists,
+  type ThemeId,
+} from '../lib/storage/settings';
+import type {
+  ChatSession,
+  SessionMessage,
+} from '../lib/storage/sessions';
 
 interface Props {
   selectedText: string;
@@ -62,12 +70,20 @@ export function ChatPopup({
   const [controlsHidden, setControlsHidden] = useState(false);
   const [controlsPinned, setControlsPinned] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('light');
+  const [providerModels, setProviderModels] = useState<ProviderModelLists>(
+    () => defaultProviderModels(),
+  );
+  const [pendingUserMessage, setPendingUserMessage] =
+    useState<SessionMessage | null>(null);
+  const providerModelsRef = useRef(providerModels);
+  providerModelsRef.current = providerModels;
   const scrollRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   /** Texto completo recebido da API (ainda pode crescer durante o stream). */
   const streamFullRef = useRef('');
   const streamStartRef = useRef<number | null>(null);
   const streamDoneSessionRef = useRef<string | null>(null);
+  const bootstrappedRef = useRef(false);
 
   const resetStreamReveal = useCallback(() => {
     streamFullRef.current = '';
@@ -76,10 +92,22 @@ export function ChatPopup({
     setStreamingText('');
   }, []);
 
-  const modelOptions = useMemo(() => {
-    const def = PROVIDERS.find((p) => p.id === provider);
-    return def?.models ?? [];
-  }, [provider]);
+  const modelOptions = useMemo(
+    () => getModelsForProvider(provider, providerModels),
+    [provider, providerModels],
+  );
+
+  const displayMessages = useMemo(() => {
+    const base = session?.messages ?? [];
+    if (!pendingUserMessage) return base;
+    const already = base.some(
+      (m) =>
+        m.role === 'user' &&
+        m.content === pendingUserMessage.content &&
+        Math.abs(m.createdAt - pendingUserMessage.createdAt) < 10_000,
+    );
+    return already ? base : [...base, pendingUserMessage];
+  }, [pendingUserMessage, session?.messages]);
 
   const handleContextDead = useCallback(() => {
     setContextDead(true);
@@ -110,9 +138,11 @@ export function ChatPopup({
           setSession(s);
           setSessionId(s.id);
           setProvider(s.provider);
-          const known =
-            PROVIDERS.find((p) => p.id === s.provider)?.models ?? [];
-          applyModel(s.model, known);
+          setPendingUserMessage(null);
+          applyModel(
+            s.model,
+            getModelsForProvider(s.provider, providerModelsRef.current),
+          );
         }
       } catch (err) {
         if (err instanceof ExtensionContextInvalidatedError) {
@@ -172,16 +202,24 @@ export function ChatPopup({
   );
 
   useEffect(() => {
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+
     void (async () => {
       try {
         const settings = await sendToBackground({ type: 'GET_SETTINGS' });
         if (settings.type === 'SETTINGS_RESULT') {
+          providerModelsRef.current = settings.providerModels;
           setProvider(settings.defaultProvider);
           setTheme(settings.theme);
-          const known =
-            PROVIDERS.find((p) => p.id === settings.defaultProvider)?.models ??
-            [];
-          applyModel(settings.defaultModel, known);
+          setProviderModels(settings.providerModels);
+          applyModel(
+            settings.defaultModel,
+            getModelsForProvider(
+              settings.defaultProvider,
+              settings.providerModels,
+            ),
+          );
         }
         await refreshVault();
         await refreshSessions({ selectLatest: true });
@@ -230,6 +268,7 @@ export function ChatPopup({
       }
       if (msg.type === 'CHAT_ERROR' && msg.sessionId === sessionId) {
         resetStreamReveal();
+        setPendingUserMessage(null);
         setSending(false);
         setError(msg.error);
       }
@@ -270,7 +309,9 @@ export function ChatPopup({
         streamStartRef.current = null;
         setStreamingText('');
         setSending(false);
-        void loadSession(doneSessionId);
+        void loadSession(doneSessionId).then(() => {
+          setPendingUserMessage(null);
+        });
         void refreshSessions();
       }
     }, TICK_MS);
@@ -315,7 +356,7 @@ export function ChatPopup({
     const root = scrollRef.current;
     if (!root) return;
     root.scrollTop = root.scrollHeight;
-  }, [unlocked, streamingText, session?.messages]);
+  }, [unlocked, streamingText, displayMessages]);
 
   const resolvedModel = effectiveModelId(model, customModel);
 
@@ -397,8 +438,17 @@ export function ChatPopup({
     const content = composer.trim();
     if (!content) return;
 
+    const optimisticUser: SessionMessage = {
+      role: 'user',
+      content,
+      createdAt: Date.now(),
+    };
+
     setSending(true);
     resetStreamReveal();
+    setComposer('');
+    setPendingUserMessage(optimisticUser);
+
     try {
       const id = await ensureSession();
       const res = await sendToBackground({
@@ -409,12 +459,15 @@ export function ChatPopup({
         model: resolvedModel,
       });
       if (res.type === 'ERROR') {
+        setPendingUserMessage(null);
+        setComposer(content);
         setSending(false);
         setError(res.error);
         return;
       }
-      setComposer('');
     } catch (err) {
+      setPendingUserMessage(null);
+      setComposer(content);
       setSending(false);
       if (err instanceof ExtensionContextInvalidatedError) {
         handleContextDead();
@@ -457,6 +510,7 @@ export function ChatPopup({
         onCreate={() => {
           setSessionId(null);
           setSession(null);
+          setPendingUserMessage(null);
           resetStreamReveal();
         }}
       />
@@ -470,10 +524,17 @@ export function ChatPopup({
             onChange={(e) => {
               const id = e.target.value as ProviderId;
               setProvider(id);
-              const def = PROVIDERS.find((p) => p.id === id);
-              if (def) {
-                setModel(def.defaultModel);
+              const known = getModelsForProvider(id, providerModels);
+              const preferred = getProvider(id).defaultModel;
+              if (known.includes(preferred)) {
+                setModel(preferred);
                 setCustomModel('');
+              } else if (known[0]) {
+                setModel(known[0]);
+                setCustomModel('');
+              } else {
+                setModel(MODEL_DIGITAR);
+                setCustomModel(preferred);
               }
             }}
           >
@@ -689,7 +750,7 @@ export function ChatPopup({
               </div>
 
               <MessageList
-                messages={session?.messages ?? []}
+                messages={displayMessages}
                 streamingText={streamingText || undefined}
                 model={session?.model || resolvedModel}
                 theme={theme}

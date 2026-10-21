@@ -1,5 +1,10 @@
 import { MAX_MESSAGE_CHARS } from './limits';
-import { isThemeId, type ThemeId } from './storage/settings';
+import {
+  isThemeId,
+  sanitizeProviderModels,
+  type ProviderModelLists,
+  type ThemeId,
+} from './storage/settings';
 import { isProviderId, type ProviderId } from './providers/types';
 
 export type ClientMessage =
@@ -13,6 +18,7 @@ export type ClientMessage =
       type: 'SAVE_SETTINGS';
       defaultProvider: ProviderId;
       defaultModel: string;
+      providerModels?: ProviderModelLists;
     }
   | { type: 'SET_THEME'; theme: ThemeId }
   | { type: 'LIST_SESSIONS' }
@@ -55,6 +61,7 @@ export type ServerMessage =
       defaultProvider: ProviderId;
       defaultModel: string;
       theme: ThemeId;
+      providerModels: ProviderModelLists;
     }
   | { type: 'SESSIONS_RESULT'; sessions: unknown }
   | { type: 'SESSION_RESULT'; session: unknown }
@@ -114,10 +121,15 @@ export function parseClientMessage(raw: unknown): ClientMessage {
       if (!isNonEmptyString(msg.defaultModel, 200)) {
         throw new Error('Modelo inválido.');
       }
+      const providerModels =
+        msg.providerModels === undefined
+          ? undefined
+          : sanitizeProviderModels(msg.providerModels);
       return {
         type,
         defaultProvider: msg.defaultProvider,
         defaultModel: msg.defaultModel,
+        providerModels,
       };
     }
 

@@ -171,6 +171,7 @@ async function dispatch(
         defaultProvider: message.defaultProvider,
         defaultModel: message.defaultModel,
         theme: current.theme,
+        providerModels: message.providerModels ?? current.providerModels,
       });
       return { type: 'OK' };
     }
