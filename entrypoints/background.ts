@@ -5,7 +5,7 @@ import {
   type ServerMessage,
 } from '../lib/messaging';
 import { streamChat } from '../lib/providers/registry';
-import type { ChatMessage } from '../lib/providers/types';
+import { resolveModelId, type ChatMessage } from '../lib/providers/types';
 import {
   appendMessages,
   clearSessions,
@@ -67,9 +67,11 @@ async function handleChatSend(
     };
   }
 
+  const model = resolveModelId(msg.provider, msg.model);
+
   session = await updateSession(msg.sessionId, {
     provider: msg.provider,
-    model: msg.model,
+    model,
   });
 
   const userMessage = {
@@ -93,7 +95,7 @@ async function handleChatSend(
     try {
       for await (const delta of streamChat({
         provider: msg.provider,
-        model: msg.model,
+        model,
         apiKey,
         messages: history,
       })) {

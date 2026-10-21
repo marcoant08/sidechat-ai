@@ -29,12 +29,11 @@ export const PROVIDERS: ProviderDefinition[] = [
   {
     id: 'groq',
     label: 'Groq',
-    defaultModel: 'llama-3.3-70b-versatile',
+    defaultModel: 'openai/gpt-oss-20b',
     models: [
-      'llama-3.3-70b-versatile',
-      'llama-3.1-8b-instant',
-      'mixtral-8x7b-32768',
-      'gemma2-9b-it',
+      'openai/gpt-oss-20b',
+      'openai/gpt-oss-120b',
+      'qwen/qwen3.8-27b',
     ],
   },
   {
@@ -59,6 +58,21 @@ export const PROVIDERS: ProviderDefinition[] = [
     ],
   },
 ];
+
+/** Mapas de modelos Groq descontinuados → substitutos atuais. */
+const GROQ_MODEL_ALIASES: Record<string, string> = {
+  'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+  'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+  'mixtral-8x7b-32768': 'openai/gpt-oss-20b',
+  'gemma2-9b-it': 'openai/gpt-oss-20b',
+};
+
+export function resolveModelId(provider: ProviderId, model: string): string {
+  if (provider === 'groq') {
+    return GROQ_MODEL_ALIASES[model] ?? model;
+  }
+  return model;
+}
 
 export function getProvider(id: ProviderId): ProviderDefinition {
   const found = PROVIDERS.find((p) => p.id === id);
