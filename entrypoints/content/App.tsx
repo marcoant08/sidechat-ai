@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatPopup } from '../../components/ChatPopup';
 import { SelectionButton } from '../../components/SelectionButton';
 
@@ -12,6 +12,13 @@ export default function App() {
   const [selectedText, setSelectedText] = useState('');
   const [open, setOpen] = useState(false);
   const [popupPos, setPopupPos] = useState<Anchor>({ x: 24, y: 24 });
+  const popupWrapRef = useRef<HTMLDivElement>(null);
+
+  const closePopup = useCallback(() => {
+    setOpen(false);
+    setSelectedText('');
+    setAnchor(null);
+  }, []);
 
   const hideButton = useCallback(() => {
     if (!open) setAnchor(null);
@@ -37,8 +44,7 @@ export default function App() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setOpen(false);
-        setAnchor(null);
+        closePopup();
       }
     };
 
@@ -48,7 +54,7 @@ export default function App() {
       document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [closePopup, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +62,28 @@ export default function App() {
     window.addEventListener('scroll', onScroll, true);
     return () => window.removeEventListener('scroll', onScroll, true);
   }, [hideButton, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const wrap = popupWrapRef.current;
+      if (!wrap) return;
+      const path = e.composedPath();
+      if (path.includes(wrap)) return;
+      closePopup();
+    };
+
+    // Próximo tick: evita fechar no mesmo clique que abriu o popup.
+    const timer = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown, true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [closePopup, open]);
 
   return (
     <>
@@ -75,6 +103,7 @@ export default function App() {
       )}
       {open && (
         <div
+          ref={popupWrapRef}
           style={{
             position: 'fixed',
             left: Math.max(12, popupPos.x),
@@ -82,13 +111,7 @@ export default function App() {
             zIndex: 2147483647,
           }}
         >
-          <ChatPopup
-            selectedText={selectedText}
-            onClose={() => {
-              setOpen(false);
-              setSelectedText('');
-            }}
-          />
+          <ChatPopup selectedText={selectedText} onClose={closePopup} />
         </div>
       )}
     </>

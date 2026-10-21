@@ -36,12 +36,15 @@ export function ChatPopup({ selectedText, onClose }: Props) {
   const [provider, setProvider] = useState<ProviderId>('openai');
   const [model, setModel] = useState('gpt-4o-mini');
   const [customModel, setCustomModel] = useState('');
+  const [configured, setConfigured] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [providersWithKey, setProvidersWithKey] = useState<ProviderId[]>([]);
+  const [passphrase, setPassphrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [contextDead, setContextDead] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
 
   const modelOptions = useMemo(() => {
     const def = PROVIDERS.find((p) => p.id === provider);
@@ -54,41 +57,6 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       'Extensão foi recarregada. Atualize esta página (F5) para continuar.',
     );
   }, []);
-
-  const refreshVault = useCallback(async () => {
-    if (!isExtensionContextValid()) {
-      handleContextDead();
-      return;
-    }
-    try {
-      const res = await sendToBackground({ type: 'VAULT_STATUS' });
-      if (res.type === 'VAULT_STATUS_RESULT') {
-        setUnlocked(res.unlocked);
-        setProvidersWithKey(res.providersWithKey);
-      }
-    } catch (err) {
-      if (err instanceof ExtensionContextInvalidatedError) {
-        handleContextDead();
-      }
-    }
-  }, [handleContextDead]);
-
-  const refreshSessions = useCallback(async () => {
-    if (!isExtensionContextValid()) {
-      handleContextDead();
-      return;
-    }
-    try {
-      const res = await sendToBackground({ type: 'LIST_SESSIONS' });
-      if (res.type === 'SESSIONS_RESULT') {
-        setSessions(res.sessions as ChatSession[]);
-      }
-    } catch (err) {
-      if (err instanceof ExtensionContextInvalidatedError) {
-        handleContextDead();
-      }
-    }
-  }, [handleContextDead]);
 
   const applyModel = useCallback((modelId: string, known: string[]) => {
     const resolved = resolveModelSelection(modelId, known);
@@ -125,6 +93,49 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     [applyModel, handleContextDead],
   );
 
+  const refreshVault = useCallback(async () => {
+    if (!isExtensionContextValid()) {
+      handleContextDead();
+      return;
+    }
+    try {
+      const res = await sendToBackground({ type: 'VAULT_STATUS' });
+      if (res.type === 'VAULT_STATUS_RESULT') {
+        setConfigured(res.configured);
+        setUnlocked(res.unlocked);
+        setProvidersWithKey(res.providersWithKey);
+      }
+    } catch (err) {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+      }
+    }
+  }, [handleContextDead]);
+
+  const refreshSessions = useCallback(
+    async (opts?: { selectLatest?: boolean }) => {
+      if (!isExtensionContextValid()) {
+        handleContextDead();
+        return;
+      }
+      try {
+        const res = await sendToBackground({ type: 'LIST_SESSIONS' });
+        if (res.type === 'SESSIONS_RESULT') {
+          const list = res.sessions as ChatSession[];
+          setSessions(list);
+          if (opts?.selectLatest && list[0]) {
+            await loadSession(list[0].id);
+          }
+        }
+      } catch (err) {
+        if (err instanceof ExtensionContextInvalidatedError) {
+          handleContextDead();
+        }
+      }
+    },
+    [handleContextDead, loadSession],
+  );
+
   useEffect(() => {
     void (async () => {
       try {
@@ -137,7 +148,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
           applyModel(settings.defaultModel, known);
         }
         await refreshVault();
-        await refreshSessions();
+        await refreshSessions({ selectLatest: true });
       } catch (err) {
         if (err instanceof ExtensionContextInvalidatedError) {
           handleContextDead();
@@ -210,6 +221,42 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     return s.id;
   };
 
+  const handleUnlock = async () => {
+    setError(null);
+    if (contextDead || !isExtensionContextValid()) {
+      handleContextDead();
+      return;
+    }
+    if (!passphrase) {
+      setError('Informe a senha mestre.');
+      return;
+    }
+    setUnlocking(true);
+    try {
+      const res = await sendToBackground({
+        type: 'VAULT_UNLOCK',
+        passphrase,
+      });
+      if (res.type === 'ERROR') {
+        setError(res.error);
+        return;
+      }
+      setPassphrase('');
+      await refreshVault();
+      if (!sessionId) {
+        await refreshSessions({ selectLatest: true });
+      }
+    } catch (err) {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+        return;
+      }
+      setError(err instanceof Error ? err.message : 'Falha ao desbloquear.');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   const handleSend = async () => {
     setError(null);
     if (contextDead || !isExtensionContextValid()) {
@@ -217,7 +264,7 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       return;
     }
     if (!unlocked) {
-      setError('Cofre bloqueado. Abra Configurar e desbloqueie.');
+      setError('Cofre bloqueado. Desbloqueie para continuar.');
       return;
     }
     if (!providersWithKey.includes(provider)) {
@@ -258,27 +305,31 @@ export function ChatPopup({ selectedText, onClose }: Props) {
     }
   };
 
+  const openOptions = () => {
+    void sendToBackground({ type: 'OPEN_OPTIONS' }).catch((err) => {
+      if (err instanceof ExtensionContextInvalidatedError) {
+        handleContextDead();
+      }
+    });
+  };
+
   return (
     <div className="sidechat-root sidechat-popup">
       <header className="sidechat-popup-header">
         <strong>🤖 sidechat-ai</strong>
         <div className="sidechat-popup-actions">
-          <button
-            type="button"
-            className="sidechat-btn sidechat-btn-icon"
-            title="Configurar"
-            aria-label="Configurar"
-            disabled={contextDead}
-            onClick={() => {
-              void sendToBackground({ type: 'OPEN_OPTIONS' }).catch((err) => {
-                if (err instanceof ExtensionContextInvalidatedError) {
-                  handleContextDead();
-                }
-              });
-            }}
-          >
-            <GearSix size={18} weight="bold" />
-          </button>
+          {(unlocked || !configured) && (
+            <button
+              type="button"
+              className="sidechat-btn sidechat-btn-icon"
+              title="Configurar"
+              aria-label="Configurar"
+              disabled={contextDead}
+              onClick={openOptions}
+            >
+              <GearSix size={18} weight="bold" />
+            </button>
+          )}
           <button
             type="button"
             className="sidechat-btn sidechat-btn-icon"
@@ -298,100 +349,150 @@ export function ChatPopup({ selectedText, onClose }: Props) {
       )}
 
       {!contextDead && !unlocked && (
-        <p className="sidechat-error">
-          Cofre bloqueado. Use Configurar para desbloquear e definir tokens.
-        </p>
+        <div className="sidechat-unlock">
+          {!configured ? (
+            <>
+              <p className="sidechat-muted">
+                Cofre ainda não configurado. Abra as configurações para criar a
+                senha mestre.
+              </p>
+              <button
+                type="button"
+                className="sidechat-btn sidechat-btn-primary"
+                onClick={openOptions}
+              >
+                Configurar cofre
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="sidechat-field" style={{ marginBottom: 0 }}>
+                <label className="sidechat-label" htmlFor="sidechat-unlock">
+                  Senha mestre
+                </label>
+                <input
+                  id="sidechat-unlock"
+                  className="sidechat-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={passphrase}
+                  disabled={unlocking}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleUnlock();
+                    }
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                className="sidechat-btn sidechat-btn-primary"
+                disabled={unlocking || !passphrase}
+                onClick={() => void handleUnlock()}
+              >
+                {unlocking ? 'Desbloqueando…' : 'Desbloquear cofre'}
+              </button>
+            </>
+          )}
+          {error && <p className="sidechat-error">{error}</p>}
+        </div>
       )}
 
-      {truncated.truncated && (
-        <p className="sidechat-muted">
-          Texto selecionado truncado para {truncated.text.length} caracteres.
-        </p>
-      )}
+      {!contextDead && unlocked && (
+        <>
+          {truncated.truncated && (
+            <p className="sidechat-muted">
+              Texto selecionado truncado para {truncated.text.length} caracteres.
+            </p>
+          )}
 
-      <SessionPicker
-        sessions={sessions}
-        currentId={sessionId}
-        onSelect={(id) => void loadSession(id)}
-        onCreate={() => {
-          setSessionId(null);
-          setSession(null);
-          setStreamingText('');
-        }}
-      />
-
-      <div className="sidechat-row">
-        <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
-          <label className="sidechat-label">Provider</label>
-          <select
-            className="sidechat-select"
-            value={provider}
-            onChange={(e) => {
-              const id = e.target.value as ProviderId;
-              setProvider(id);
-              const def = PROVIDERS.find((p) => p.id === id);
-              if (def) {
-                setModel(def.defaultModel);
-                setCustomModel('');
-              }
+          <SessionPicker
+            sessions={sessions}
+            currentId={sessionId}
+            onSelect={(id) => void loadSession(id)}
+            onCreate={() => {
+              setSessionId(null);
+              setSession(null);
+              setStreamingText('');
             }}
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-                {providersWithKey.includes(p.id) ? '' : ' (sem key)'}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
-          <label className="sidechat-label">Modelo</label>
-          <select
-            className="sidechat-select"
-            value={model}
-            onChange={(e) => {
-              const value = e.target.value;
-              setModel(value);
-              if (value !== MODEL_DIGITAR) {
-                setCustomModel('');
-              }
-            }}
-          >
-            {modelOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-            <option value={MODEL_DIGITAR}>Digitar</option>
-          </select>
-        </div>
-      </div>
-
-      {model === MODEL_DIGITAR && (
-        <div className="sidechat-field">
-          <label className="sidechat-label">Model id</label>
-          <input
-            className="sidechat-input"
-            value={customModel}
-            placeholder="ex: gpt-4.1"
-            onChange={(e) => setCustomModel(e.target.value)}
           />
-        </div>
+
+          <div className="sidechat-row">
+            <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="sidechat-label">Provider</label>
+              <select
+                className="sidechat-select"
+                value={provider}
+                onChange={(e) => {
+                  const id = e.target.value as ProviderId;
+                  setProvider(id);
+                  const def = PROVIDERS.find((p) => p.id === id);
+                  if (def) {
+                    setModel(def.defaultModel);
+                    setCustomModel('');
+                  }
+                }}
+              >
+                {PROVIDERS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                    {providersWithKey.includes(p.id) ? '' : ' (sem key)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sidechat-field" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="sidechat-label">Modelo</label>
+              <select
+                className="sidechat-select"
+                value={model}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setModel(value);
+                  if (value !== MODEL_DIGITAR) {
+                    setCustomModel('');
+                  }
+                }}
+              >
+                {modelOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+                <option value={MODEL_DIGITAR}>Digitar</option>
+              </select>
+            </div>
+          </div>
+
+          {model === MODEL_DIGITAR && (
+            <div className="sidechat-field">
+              <label className="sidechat-label">Model id</label>
+              <input
+                className="sidechat-input"
+                value={customModel}
+                placeholder="ex: gpt-4.1"
+                onChange={(e) => setCustomModel(e.target.value)}
+              />
+            </div>
+          )}
+
+          <MessageList
+            messages={session?.messages ?? []}
+            streamingText={streamingText || undefined}
+          />
+
+          {error && <p className="sidechat-error">{error}</p>}
+
+          <Composer
+            value={composer}
+            disabled={sending || contextDead}
+            onChange={setComposer}
+            onSend={() => void handleSend()}
+          />
+        </>
       )}
-
-      <MessageList
-        messages={session?.messages ?? []}
-        streamingText={streamingText || undefined}
-      />
-
-      {error && <p className="sidechat-error">{error}</p>}
-
-      <Composer
-        value={composer}
-        disabled={sending || !unlocked || contextDead}
-        onChange={setComposer}
-        onSend={() => void handleSend()}
-      />
     </div>
   );
 }
