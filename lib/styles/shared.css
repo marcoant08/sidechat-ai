@@ -1,0 +1,101 @@
+:host,
+.sidechat-root {
+  --sc-bg: #f7f4ef;
+  --sc-surface: #fffdf9;
+  --sc-ink: #1c1917;
+  --sc-muted: #78716c;
+  --sc-accent: #0f766e;
+  --sc-accent-ink: #f0fdfa;
+  --sc-border: #e7e5e4;
+  --sc-danger: #b91c1c;
+  --sc-radius: 10px;
+  --sc-font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: var(--sc-font);
+  color: var(--sc-ink);
+  box-sizing: border-box;
+}
+
+.sidechat-root *,
+.sidechat-root *::before,
+.sidechat-root *::after {
+  box-sizing: border-box;
+}
+
+.sidechat-btn {
+  appearance: none;
+  border: 1px solid var(--sc-border);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.sidechat-btn:hover:not(:disabled) {
+  border-color: var(--sc-accent);
+}
+
+.sidechat-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidechat-btn-primary {
+  background: var(--sc-accent);
+  border-color: var(--sc-accent);
+  color: var(--sc-accent-ink);
+}
+
+.sidechat-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.sidechat-input,
+.sidechat-select,
+.sidechat-textarea {
+  width: 100%;
+  border: 1px solid var(--sc-border);
+  background: #fff;
+  color: var(--sc-ink);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.sidechat-textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.sidechat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--sc-muted);
+  margin-bottom: 0.25rem;
+}
+
+.sidechat-field {
+  margin-bottom: 0.85rem;
+}
+
+.sidechat-error {
+  color: var(--sc-danger);
+  font-size: 0.8rem;
+  margin: 0.5rem 0;
+}
+
+.sidechat-muted {
+  color: var(--sc-muted);
+  font-size: 0.8rem;
+}
+
+.sidechat-msg {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin: 0;
+}

@@ -1,0 +1,89 @@
+@import '../../lib/styles/shared.css';
+
+.sidechat-fab {
+  position: fixed;
+  z-index: 2147483646;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #f0fdfa;
+  font: 700 12px/1 "IBM Plex Sans", "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  transform: translate(-50%, -120%);
+}
+
+.sidechat-fab:hover {
+  filter: brightness(1.08);
+}
+
+.sidechat-popup {
+  position: fixed;
+  z-index: 2147483647;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  background: var(--sc-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  box-shadow: 0 16px 40px rgba(28, 25, 23, 0.22);
+  overflow: hidden;
+}
+
+.sidechat-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sidechat-popup-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.sidechat-session-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sidechat-session-row .sidechat-select {
+  flex: 1;
+}
+
+.sidechat-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sidechat-messages {
+  flex: 1;
+  min-height: 140px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.5rem;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+}
+
+.sidechat-bubble {
+  margin-bottom: 0.65rem;
+}
+
+.sidechat-bubble-role {
+  font-size: 0.7rem;
+  color: var(--sc-muted);
+  margin-bottom: 0.15rem;
+}
+
+.sidechat-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}

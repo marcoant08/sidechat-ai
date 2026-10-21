@@ -1,0 +1,81 @@
+@import '../../lib/styles/shared.css';
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 10% 0%, #ccfbf1 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, #fef3c7 0%, transparent 35%),
+    #f7f4ef;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #1c1917;
+}
+
+.opts-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.opts-card {
+  background: #fffdf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.opts-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.opts-warn {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.opts-status {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.opts-pill {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #e7e5e4;
+  background: #fff;
+}
+
+.opts-pill-ok {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+.opts-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.opts-provider {
+  border-top: 1px solid #e7e5e4;
+  padding-top: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.opts-provider:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}

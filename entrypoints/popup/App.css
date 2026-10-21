@@ -1,0 +1,31 @@
+@import '../../lib/styles/shared.css';
+
+html,
+body {
+  margin: 0;
+  width: 280px;
+  background: #f7f4ef;
+}
+
+.popup-root {
+  padding: 1rem;
+}
+
+.popup-root h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.popup-status {
+  font-size: 0.85rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem;
+  background: #fffdf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+}
+
+.popup-status ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
