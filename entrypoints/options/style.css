@@ -92,6 +92,7 @@ body {
 .opts-status {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -110,6 +111,54 @@ body {
   background: var(--opts-accent-soft);
   color: var(--opts-accent);
   font-weight: 600;
+}
+
+.opts-status-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.4rem;
+  margin: 0 0.15rem;
+  background: var(--opts-border);
+}
+
+.opts-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--opts-border);
+  background: var(--opts-surface);
+}
+
+.opts-status-name {
+  font-weight: 600;
+  color: var(--opts-ink);
+}
+
+.opts-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.opts-tag-ok {
+  color: #047857;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+.opts-tag-missing {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
 }
 
 .opts-banner {

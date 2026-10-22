@@ -27,8 +27,8 @@ export default function App() {
       </p>
 
       <div className="popup-status">
-        <div>
-          Cofre:{' '}
+        <div className="popup-status-row">
+          <span className="popup-status-label">Cofre</span>
           <strong>
             {!configured
               ? 'não configurado'
@@ -37,14 +37,27 @@ export default function App() {
                 : 'bloqueado'}
           </strong>
         </div>
-        <ul>
-          {PROVIDERS.map((p) => (
-            <li key={p.id}>
-              {p.label}:{' '}
-              {providersWithKey.includes(p.id) ? 'key ok' : 'sem key'}
-            </li>
-          ))}
-        </ul>
+        {unlocked && (
+          <ul className="popup-status-list">
+            {PROVIDERS.map((p) => {
+              const ready = providersWithKey.includes(p.id);
+              return (
+                <li key={p.id} className="popup-status-row">
+                  <span className="popup-status-label">{p.label}</span>
+                  <span
+                    className={
+                      ready
+                        ? 'popup-tag popup-tag-ok'
+                        : 'popup-tag popup-tag-missing'
+                    }
+                  >
+                    {ready ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <button

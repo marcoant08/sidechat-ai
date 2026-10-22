@@ -23,7 +23,12 @@ import {
   resolveModelSelection,
 } from '../lib/models';
 import { getPageKey } from '../lib/page';
-import { getProvider, PROVIDERS, type ProviderId } from '../lib/providers/types';
+import {
+  getProvider,
+  pickPreferredProvider,
+  PROVIDERS,
+  type ProviderId,
+} from '../lib/providers/types';
 import {
   defaultProviderModels,
   getModelsForProvider,
@@ -58,6 +63,8 @@ export function ChatPopup({
   const [provider, setProvider] = useState<ProviderId>('openai');
   const [model, setModel] = useState('gpt-4o-mini');
   const [customModel, setCustomModel] = useState('');
+  const [defaultProvider, setDefaultProvider] = useState<ProviderId>('openai');
+  const [defaultModel, setDefaultModel] = useState('gpt-4o-mini');
   const [configured, setConfigured] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [providersWithKey, setProvidersWithKey] = useState<ProviderId[]>([]);
@@ -122,6 +129,30 @@ export function ChatPopup({
     setCustomModel(resolved.customModel);
   }, []);
 
+  const applyProviderChoice = useCallback(
+    (id: ProviderId, preferredModel?: string) => {
+      setProvider(id);
+      const known = getModelsForProvider(id, providerModelsRef.current);
+      const candidate =
+        preferredModel?.trim() ||
+        (id === defaultProvider ? defaultModel : '') ||
+        getProvider(id).defaultModel;
+      if (known.includes(candidate)) {
+        setModel(candidate);
+        setCustomModel('');
+        return;
+      }
+      if (known[0]) {
+        setModel(known[0]);
+        setCustomModel('');
+        return;
+      }
+      setModel(MODEL_DIGITAR);
+      setCustomModel(candidate);
+    },
+    [defaultModel, defaultProvider],
+  );
+
   const loadSession = useCallback(
     async (id: string) => {
       if (!isExtensionContextValid()) {
@@ -174,6 +205,43 @@ export function ChatPopup({
 
   const pageKey = useMemo(() => getPageKey(), []);
 
+  const chooseProviderForNewSession = useCallback(
+    (
+      withKeys: readonly ProviderId[] = providersWithKey,
+      sessionList: ChatSession[] = sessions,
+    ) => {
+      const previousFromSession =
+        session?.provider ??
+        sessionList.find((s) => s.pageUrl === pageKey)?.provider ??
+        sessionList[0]?.provider ??
+        null;
+      const preferred = pickPreferredProvider({
+        withKeys,
+        previous: previousFromSession ?? provider,
+        fallback: defaultProvider,
+      });
+      const keepModel =
+        preferred === provider
+          ? effectiveModelId(model, customModel)
+          : preferred === defaultProvider
+            ? defaultModel
+            : undefined;
+      applyProviderChoice(preferred, keepModel);
+    },
+    [
+      applyProviderChoice,
+      customModel,
+      defaultModel,
+      defaultProvider,
+      model,
+      pageKey,
+      provider,
+      providersWithKey,
+      session?.provider,
+      sessions,
+    ],
+  );
+
   const refreshSessions = useCallback(
     async (opts?: { selectLatest?: boolean }) => {
       if (!isExtensionContextValid()) {
@@ -207,29 +275,61 @@ export function ChatPopup({
 
     void (async () => {
       try {
+        let settingsProvider: ProviderId = 'openai';
+        let settingsModel = 'gpt-4o-mini';
+        let models = defaultProviderModels();
+
         const settings = await sendToBackground({ type: 'GET_SETTINGS' });
         if (settings.type === 'SETTINGS_RESULT') {
-          providerModelsRef.current = settings.providerModels;
-          setProvider(settings.defaultProvider);
+          settingsProvider = settings.defaultProvider;
+          settingsModel = settings.defaultModel;
+          models = settings.providerModels;
+          providerModelsRef.current = models;
+          setDefaultProvider(settingsProvider);
+          setDefaultModel(settingsModel);
           setTheme(settings.theme);
-          setProviderModels(settings.providerModels);
-          applyModel(
-            settings.defaultModel,
-            getModelsForProvider(
-              settings.defaultProvider,
-              settings.providerModels,
-            ),
-          );
+          setProviderModels(models);
         }
-        await refreshVault();
-        await refreshSessions({ selectLatest: true });
+
+        const vault = await sendToBackground({ type: 'VAULT_STATUS' });
+        let withKeys: ProviderId[] = [];
+        if (vault.type === 'VAULT_STATUS_RESULT') {
+          setConfigured(vault.configured);
+          setUnlocked(vault.unlocked);
+          setProvidersWithKey(vault.providersWithKey);
+          withKeys = vault.providersWithKey;
+        }
+
+        const sessionsRes = await sendToBackground({ type: 'LIST_SESSIONS' });
+        if (sessionsRes.type !== 'SESSIONS_RESULT') return;
+        const list = sessionsRes.sessions as ChatSession[];
+        setSessions(list);
+
+        const latestOnPage = list.find((s) => s.pageUrl === pageKey);
+        if (latestOnPage) {
+          await loadSession(latestOnPage.id);
+          return;
+        }
+
+        const preferred = pickPreferredProvider({
+          withKeys,
+          previous: list[0]?.provider ?? null,
+          fallback: settingsProvider,
+        });
+        setProvider(preferred);
+        applyModel(
+          preferred === settingsProvider
+            ? settingsModel
+            : getProvider(preferred).defaultModel,
+          getModelsForProvider(preferred, models),
+        );
       } catch (err) {
         if (err instanceof ExtensionContextInvalidatedError) {
           handleContextDead();
         }
       }
     })();
-  }, [applyModel, handleContextDead, refreshSessions, refreshVault]);
+  }, [applyModel, handleContextDead, loadSession, pageKey]);
 
   // Reconsulta o cofre ao focar / periodicamente até desbloquear.
   useEffect(() => {
@@ -402,9 +502,26 @@ export function ChatPopup({
         return;
       }
       setPassphrase('');
-      await refreshVault();
+      const vault = await sendToBackground({ type: 'VAULT_STATUS' });
+      let withKeys = providersWithKey;
+      if (vault.type === 'VAULT_STATUS_RESULT') {
+        setConfigured(vault.configured);
+        setUnlocked(vault.unlocked);
+        setProvidersWithKey(vault.providersWithKey);
+        withKeys = vault.providersWithKey;
+      }
       if (!sessionId) {
-        await refreshSessions({ selectLatest: true });
+        const listed = await sendToBackground({ type: 'LIST_SESSIONS' });
+        if (listed.type === 'SESSIONS_RESULT') {
+          const list = listed.sessions as ChatSession[];
+          setSessions(list);
+          const latestOnPage = list.find((s) => s.pageUrl === pageKey);
+          if (latestOnPage) {
+            await loadSession(latestOnPage.id);
+          } else {
+            chooseProviderForNewSession(withKeys, list);
+          }
+        }
       }
     } catch (err) {
       if (err instanceof ExtensionContextInvalidatedError) {
@@ -512,6 +629,7 @@ export function ChatPopup({
           setSession(null);
           setPendingUserMessage(null);
           resetStreamReveal();
+          chooseProviderForNewSession();
         }}
       />
 

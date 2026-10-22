@@ -88,3 +88,16 @@ export function isProviderId(value: unknown): value is ProviderId {
     value === 'openrouter'
   );
 }
+
+/** Prefers a previously used / default provider when it already has a key. */
+export function pickPreferredProvider(opts: {
+  withKeys: readonly ProviderId[];
+  previous?: ProviderId | null;
+  fallback?: ProviderId | null;
+}): ProviderId {
+  const { withKeys, previous, fallback } = opts;
+  if (previous && withKeys.includes(previous)) return previous;
+  if (fallback && withKeys.includes(fallback)) return fallback;
+  if (withKeys[0]) return withKeys[0];
+  return previous ?? fallback ?? 'openai';
+}

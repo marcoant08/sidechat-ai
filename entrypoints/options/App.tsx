@@ -242,19 +242,33 @@ export default function App() {
 
       <div className="opts-status" aria-label="Status do cofre">
         <span className={`opts-pill ${configured ? 'opts-pill-ok' : ''}`}>
-          Cofre {configured ? 'configurado' : 'não configurado'}
+          Cofre: {configured ? 'configurado' : 'não configurado'}
         </span>
         <span className={`opts-pill ${unlocked ? 'opts-pill-ok' : ''}`}>
           {unlocked ? 'Desbloqueado' : 'Bloqueado'}
         </span>
-        {PROVIDERS.map((p) => (
-          <span
-            key={p.id}
-            className={`opts-pill ${providersWithKey.includes(p.id) ? 'opts-pill-ok' : ''}`}
-          >
-            {p.label}: {providersWithKey.includes(p.id) ? 'key ok' : 'sem key'}
-          </span>
-        ))}
+        {unlocked && (
+          <>
+            <span className="opts-status-divider" aria-hidden />
+            {PROVIDERS.map((p) => {
+              const ready = providersWithKey.includes(p.id);
+              return (
+                <span key={p.id} className="opts-status-item">
+                  <span className="opts-status-name">{p.label}</span>
+                  <span
+                    className={
+                      ready
+                        ? 'opts-tag opts-tag-ok'
+                        : 'opts-tag opts-tag-missing'
+                    }
+                  >
+                    {ready ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </span>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {(message || error) && (
