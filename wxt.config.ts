@@ -13,12 +13,8 @@ export default defineConfig({
       'https://api.anthropic.com/*',
       'https://openrouter.ai/*',
     ],
-    web_accessible_resources: [
-      {
-        resources: ['chat-wallpaper.png', 'chat-wallpaper-dark.jpg'],
-        matches: ['*://*/*'],
-      },
-    ],
+    // Os wallpapers foram removidos: o fundo do chat agora é cor sólida em CSS.
+    web_accessible_resources: [],
   },
 });
 

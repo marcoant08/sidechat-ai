@@ -1,24 +1,26 @@
 :host,
 .sidechat-root {
-  --sc-bg: #f3f0ea;
-  --sc-surface: #fffcf7;
+  /* Neutros puxados para o azul e próximos do fundo do chat. */
+  --sc-bg: #cfe2f6;
+  --sc-surface: #f7fbff;
   --sc-ink: #14181f;
-  --sc-muted: #5c6570;
+  --sc-muted: #57616d;
   --sc-accent: #0d9488;
   --sc-accent-ink: #f0fdfa;
   --sc-accent-soft: rgba(13, 148, 136, 0.14);
-  --sc-border: #ddd6cb;
+  --sc-border: #a9c6e8;
   --sc-danger: #b91c1c;
   --sc-input-bg: #ffffff;
   --sc-bubble-user: #d1fae5;
   --sc-bubble-assistant: #ffffff;
   --sc-bubble-ink: #14181f;
-  --sc-messages-bg: #ebe4d8;
-  --sc-empty-bg: rgba(255, 252, 247, 0.92);
+  /* Fundo do chat: azul claro sólido, bolhas brancas por cima (ratio 1.53). */
+  --sc-messages-bg: #b8d4f0;
+  --sc-empty-bg: rgba(255, 255, 255, 0.94);
   --sc-header-bg: #0f766e;
   --sc-header-ink: #f0fdfa;
   --sc-header-muted: rgba(240, 253, 250, 0.78);
-  --sc-composer-bg: #f3f0ea;
+  --sc-composer-bg: #cfe2f6;
   --sc-focus: #0d9488;
   --sc-radius: 14px;
   --sc-font: "IBM Plex Sans", "Segoe UI", sans-serif;
@@ -30,25 +32,27 @@
 }
 
 .sidechat-root[data-theme='dark'] {
-  --sc-bg: #0e1219;
-  --sc-surface: #171d28;
+  /* Neutros puxados para o azul e próximos do fundo do chat. */
+  --sc-bg: #12233c;
+  --sc-surface: #17263f;
   --sc-ink: #e8edf5;
-  --sc-muted: #93a0b4;
+  --sc-muted: #9daabb;
   --sc-accent: #2dd4bf;
   --sc-accent-ink: #042f2e;
   --sc-accent-soft: rgba(45, 212, 191, 0.16);
-  --sc-border: #2a3344;
+  --sc-border: #2f4666;
   --sc-danger: #f87171;
-  --sc-input-bg: #121822;
+  --sc-input-bg: #1b2b46;
   --sc-bubble-user: #0f5c4f;
-  --sc-bubble-assistant: #1c2433;
+  --sc-bubble-assistant: #222e40;
   --sc-bubble-ink: #e8edf5;
-  --sc-messages-bg: #0a0c10;
-  --sc-empty-bg: rgba(23, 29, 40, 0.92);
+  /* Fundo do chat: azul escuro sólido, bolhas mais claras (ratio 1.31). */
+  --sc-messages-bg: #0c1728;
+  --sc-empty-bg: rgba(34, 46, 64, 0.92);
   --sc-header-bg: #0b3d38;
   --sc-header-ink: #ecfdf8;
   --sc-header-muted: rgba(236, 253, 248, 0.72);
-  --sc-composer-bg: #121822;
+  --sc-composer-bg: #12233c;
   --sc-focus: #2dd4bf;
 }
 

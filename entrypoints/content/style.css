@@ -250,9 +250,6 @@
   border-radius: 0;
   overflow-wrap: anywhere;
   background-color: var(--sc-messages-bg);
-  background-size: auto;
-  background-position: top left;
-  background-repeat: repeat;
 }
 
 .sidechat-messages-empty {

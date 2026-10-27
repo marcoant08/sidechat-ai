@@ -499,6 +499,10 @@ export function ChatPopup({
     const field = composerRef.current;
     if (!field || field.disabled) return;
     field.focus({ preventScroll: true });
+    // Cursor sempre ao final do texto já preenchido (ex.: trecho selecionado na página).
+    const end = field.value.length;
+    field.setSelectionRange(end, end);
+    field.scrollTop = field.scrollHeight;
   }, [contextDead, unlocked]);
 
   const resolvedModel = effectiveModelId(model, customModel);
@@ -946,7 +950,6 @@ export function ChatPopup({
                 messages={displayMessages}
                 streamingText={streamingText || undefined}
                 model={session?.model || resolvedModel}
-                theme={theme}
               />
             </div>
           </div>
