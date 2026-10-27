@@ -10,6 +10,8 @@ export interface StreamChatRequest {
   model: string;
   messages: ChatMessage[];
   apiKey: string;
+  /** Teto de tokens da resposta; reforça respostas curtas. */
+  maxTokens?: number;
 }
 
 export interface ProviderDefinition {

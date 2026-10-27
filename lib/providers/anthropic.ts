@@ -21,7 +21,7 @@ export async function* streamAnthropic(
     },
     body: JSON.stringify({
       model: request.model,
-      max_tokens: 4096,
+      max_tokens: request.maxTokens ?? 4096,
       stream: true,
       system: system || undefined,
       messages,

@@ -26,6 +26,7 @@ export async function* streamOpenAICompatible(
       model: request.model,
       messages: request.messages,
       stream: true,
+      ...(request.maxTokens ? { max_tokens: request.maxTokens } : {}),
     }),
   });
 

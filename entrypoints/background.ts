@@ -5,6 +5,7 @@ import {
   type ServerMessage,
 } from '../lib/messaging';
 import { streamChat } from '../lib/providers/registry';
+import { MAX_RESPONSE_TOKENS } from '../lib/limits';
 import { resolveModelId, type ChatMessage } from '../lib/providers/types';
 import {
   appendMessages,
@@ -39,14 +40,19 @@ const SYSTEM_PROMPT = [
   'e explique o que você sabe sobre esse tema, de forma direta e organizada.',
   '',
   'Regras gerais:',
-  '- Responda sempre em português do Brasil, de forma clara e concisa.',
+  '- Seja sempre o mais curto e direto possível. Responda em poucas frases, sem introdução nem enrolação.',
+  '- Vá direto ao ponto: comece pela resposta, não por contexto, aviso ou repetição da pergunta.',
+  '- Só aumente a resposta se o usuário pedir mais detalhes ou se o tema realmente exigir.',
+  '- Evite rodeios, ressalvas, disclaimers e frases de encerramento do tipo "espero ter ajudado".',
+  '- Prefira 1 a 3 parágrafos curtos. Nunca escreva uma resposta longa por padrão.',
+  '- Responda sempre em português do Brasil, de forma clara e objetiva.',
   '- Escreva como se estivesse mandando uma mensagem no WhatsApp: texto corrido e natural, frases curtas, sem formalidade de documento.',
   '- NÃO use markdown: nada de títulos (#), asteriscos para negrito/itálico, listas com hífen/asterisco, tabelas, blocos de código ou cercas de código. Hífens de lista podem virar traços soltos e ficam ruins na bolha do chat.',
   '- Quando precisar enumerar itens, faça isso em frases corridas ("primeiro..., depois..., e por fim...") ou com números seguidos de ponto, sem símbolos de markdown.',
   '- O usuário pode incluir trechos de texto selecionados na página como contexto; use-os para entender o assunto e o pedido.',
-  '- Quando a mensagem for apenas uma palavra solta (ou uma expressão muito curta), entenda que ele quer uma pesquisa sobre esse termo, como faria no Google: explique o que você sabe de forma direta e organizada.',
+  '- Quando a mensagem for apenas uma palavra solta (ou uma expressão muito curta), entenda que ele quer uma pesquisa sobre esse termo, como faria no Google: explique o que você sabe de forma direta e resumida.',
   '- Se o termo estiver em outro idioma, traduza-o primeiro para o português e depois explique seus significados e usos.',
-  '- Inclua usos comuns, contexto e exemplos curtos quando fizer sentido.',
+  '- Inclua usos comuns, contexto e exemplos curtos quando fizer sentido, mas sem estender a resposta.',
 ].join('\n');
 
 async function notifyTab(
@@ -120,6 +126,7 @@ async function handleChatSend(
         model,
         apiKey,
         messages: history,
+        maxTokens: MAX_RESPONSE_TOKENS,
       })) {
         fullText += delta;
         await notifyTab(tabId, {
