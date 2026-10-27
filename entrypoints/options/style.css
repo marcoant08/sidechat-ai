@@ -378,6 +378,29 @@ textarea.opts-input {
   margin-top: 0.35rem;
 }
 
+.opts-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--opts-muted);
+}
+
+.opts-note {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--opts-border);
+  background: var(--opts-surface-2, #f8fafb);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--opts-ink);
+}
+
+.opts-note-ok {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
 .opts-key-grid {
   display: grid;
   gap: 0.75rem;

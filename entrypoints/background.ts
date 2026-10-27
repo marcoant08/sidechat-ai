@@ -20,6 +20,7 @@ import {
   saveTheme,
 } from '../lib/storage/settings';
 import {
+  disableVaultPassword,
   getProviderApiKey,
   getVaultStatus,
   lockVault,
@@ -172,6 +173,10 @@ async function dispatch(
     }
     case 'VAULT_LOCK': {
       await lockVault();
+      return { type: 'OK' };
+    }
+    case 'VAULT_DISABLE_PASSWORD': {
+      await disableVaultPassword();
       return { type: 'OK' };
     }
     case 'VAULT_SET_KEY': {

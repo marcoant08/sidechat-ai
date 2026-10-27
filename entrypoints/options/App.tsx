@@ -33,9 +33,12 @@ function emptyKeyDrafts(): Record<ProviderId, string> {
 export default function App() {
   const [configured, setConfigured] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [passwordDisabled, setPasswordDisabled] = useState(false);
   const [providersWithKey, setProvidersWithKey] = useState<ProviderId[]>([]);
   const [passphrase, setPassphrase] = useState('');
   const [passphraseConfirm, setPassphraseConfirm] = useState('');
+  /** Formulário de definir/ativar senha quando o cofre usa o modo sem senha. */
+  const [setupOpen, setSetupOpen] = useState(false);
   const [defaultProvider, setDefaultProvider] = useState<ProviderId>('openai');
   const [defaultModel, setDefaultModel] = useState('gpt-4o-mini');
   const [customModel, setCustomModel] = useState('');
@@ -63,6 +66,7 @@ export default function App() {
     if (vault.type === 'VAULT_STATUS_RESULT') {
       setConfigured(vault.configured);
       setUnlocked(vault.unlocked);
+      setPasswordDisabled(vault.passwordDisabled);
       setProvidersWithKey(vault.providersWithKey);
     }
     const settings = await sendToBackground({ type: 'GET_SETTINGS' });
@@ -98,6 +102,7 @@ export default function App() {
       showErr('As senhas não coincidem.');
       return;
     }
+    const wasOpen = configured;
     const res = await sendToBackground({
       type: 'VAULT_SETUP',
       passphrase,
@@ -108,7 +113,12 @@ export default function App() {
     }
     setPassphrase('');
     setPassphraseConfirm('');
-    showOk('Cofre criado e desbloqueado.');
+    setSetupOpen(false);
+    showOk(
+      wasOpen
+        ? 'Senha ativada. As keys foram cifradas.'
+        : 'Cofre criado e desbloqueado.',
+    );
     await refresh();
   };
 
@@ -129,6 +139,25 @@ export default function App() {
   const handleLock = async () => {
     await sendToBackground({ type: 'VAULT_LOCK' });
     showOk('Cofre bloqueado.');
+    await refresh();
+  };
+
+  const handleDisablePassword = async () => {
+    const confirmText =
+      !configured || !unlocked
+        ? 'Criar o cofre sem senha? As API keys ficarão salvas sem cifragem neste navegador.'
+        : 'Desativar a senha mestre? As API keys passarão a ficar salvas sem cifragem neste navegador.';
+    if (!confirm(confirmText)) {
+      return;
+    }
+    const res = await sendToBackground({ type: 'VAULT_DISABLE_PASSWORD' });
+    if (res.type === 'ERROR') {
+      showErr(res.error);
+      return;
+    }
+    setPassphrase('');
+    setPassphraseConfirm('');
+    showOk('Cofre sem senha. As keys ficam salvas sem cifragem.');
     await refresh();
   };
 
@@ -245,7 +274,11 @@ export default function App() {
           Cofre: {configured ? 'configurado' : 'não configurado'}
         </span>
         <span className={`opts-pill ${unlocked ? 'opts-pill-ok' : ''}`}>
-          {unlocked ? 'Desbloqueado' : 'Bloqueado'}
+          {passwordDisabled && configured
+            ? 'Sem senha'
+            : unlocked
+              ? 'Desbloqueado'
+              : 'Bloqueado'}
         </span>
         {unlocked && (
           <>
@@ -296,14 +329,19 @@ export default function App() {
               <LockKey size={20} weight="duotone" />
               <div>
                 <h2>Cofre</h2>
-                <p>Senha mestre para cifrar e liberar as API keys.</p>
+                <p>
+                  Senha mestre para cifrar e liberar as API keys. Senhas curtas
+                  são permitidas; você também pode usar o cofre sem senha.
+                </p>
               </div>
             </div>
 
-            {!configured ? (
+            {!configured || (configured && passwordDisabled && setupOpen) ? (
               <>
                 <div className="opts-field">
-                  <label htmlFor="opts-pass-new">Nova senha (mín. 8)</label>
+                  <label htmlFor="opts-pass-new">
+                    {configured ? 'Ativar senha (mín. 4)' : 'Nova senha (mín. 4)'}
+                  </label>
                   <div className="opts-control">
                     <input
                       id="opts-pass-new"
@@ -330,13 +368,59 @@ export default function App() {
                     />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="opts-btn opts-btn-primary"
-                  onClick={() => void handleSetup()}
-                >
-                  Criar cofre
-                </button>
+                <div className="opts-actions">
+                  <button
+                    type="button"
+                    className="opts-btn opts-btn-primary"
+                    onClick={() => void handleSetup()}
+                  >
+                    {configured ? 'Ativar senha' : 'Criar cofre'}
+                  </button>
+                  {configured ? (
+                    <button
+                      type="button"
+                      className="opts-btn"
+                      onClick={() => {
+                        setSetupOpen(false);
+                        setPassphrase('');
+                        setPassphraseConfirm('');
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="opts-btn"
+                      onClick={() => void handleDisablePassword()}
+                    >
+                      Usar sem senha
+                    </button>
+                  )}
+                </div>
+                {!configured && (
+                  <p className="opts-hint">
+                    Sem senha, as API keys ficam salvas sem cifragem neste
+                    navegador. Com senha, elas ficam cifradas.
+                  </p>
+                )}
+              </>
+            ) : passwordDisabled ? (
+              <>
+                <p className="opts-note opts-note-ok">
+                  O cofre está sem senha: as API keys ficam salvas sem cifragem
+                  neste navegador.
+                </p>
+                <div className="opts-actions">
+                  <button
+                    type="button"
+                    className="opts-btn opts-btn-primary"
+                    onClick={() => setSetupOpen(true)}
+                  >
+                    <LockKey size={16} weight="bold" />
+                    Ativar senha
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -370,16 +454,31 @@ export default function App() {
                       Desbloquear
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      className="opts-btn"
-                      onClick={() => void handleLock()}
-                    >
-                      <LockKey size={16} weight="bold" />
-                      Bloquear
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="opts-btn"
+                        onClick={() => void handleLock()}
+                      >
+                        <LockKey size={16} weight="bold" />
+                        Bloquear
+                      </button>
+                      <button
+                        type="button"
+                        className="opts-btn opts-btn-danger"
+                        onClick={() => void handleDisablePassword()}
+                      >
+                        Desativar senha
+                      </button>
+                    </>
                   )}
                 </div>
+                {unlocked && (
+                  <p className="opts-hint">
+                    Desativar a senha passa a guardar as keys sem cifragem neste
+                    navegador.
+                  </p>
+                )}
               </>
             )}
           </section>

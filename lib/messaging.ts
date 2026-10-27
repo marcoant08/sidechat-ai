@@ -12,6 +12,7 @@ export type ClientMessage =
   | { type: 'VAULT_SETUP'; passphrase: string }
   | { type: 'VAULT_UNLOCK'; passphrase: string }
   | { type: 'VAULT_LOCK' }
+  | { type: 'VAULT_DISABLE_PASSWORD' }
   | { type: 'VAULT_SET_KEY'; provider: ProviderId; apiKey: string }
   | { type: 'GET_SETTINGS' }
   | {
@@ -54,6 +55,7 @@ export type ServerMessage =
       type: 'VAULT_STATUS_RESULT';
       configured: boolean;
       unlocked: boolean;
+      passwordDisabled: boolean;
       providersWithKey: ProviderId[];
     }
   | {
@@ -92,6 +94,7 @@ export function parseClientMessage(raw: unknown): ClientMessage {
   switch (type) {
     case 'VAULT_STATUS':
     case 'VAULT_LOCK':
+    case 'VAULT_DISABLE_PASSWORD':
     case 'GET_SETTINGS':
     case 'LIST_SESSIONS':
     case 'CLEAR_SESSIONS':
