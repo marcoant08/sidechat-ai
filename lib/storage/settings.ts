@@ -18,8 +18,21 @@ export interface Settings {
   providerModels: ProviderModelLists;
 }
 
+interface StoredSettings extends Partial<Settings> {
+  /** Versão das listas padrão já aplicada a este usuário. */
+  modelsVersion?: number;
+}
+
 const MAX_MODELS_PER_PROVIDER = 40;
 const MAX_MODEL_ID_LENGTH = 200;
+
+/**
+ * Versão das listas padrão. Incremente ao adicionar modelos novos em
+ * `PROVIDERS`: listas já salvas recebem uma única vez os modelos que faltam,
+ * para o item novo aparecer nos selects de quem já usava a extensão. Depois
+ * disso, remoções feitas pelo usuário não são desfeitas.
+ */
+const MODELS_SCHEMA_VERSION = 2;
 
 export function defaultProviderModels(): ProviderModelLists {
   return {
@@ -76,6 +89,21 @@ export function sanitizeProviderModels(
   return next;
 }
 
+/** Acrescenta os modelos padrão que ainda não estão em cada lista. */
+function mergeDefaultModels(
+  saved: ProviderModelLists,
+): ProviderModelLists {
+  const next = { ...saved };
+  for (const provider of PROVIDERS) {
+    const merged = normalizeModelList([
+      ...saved[provider.id],
+      ...provider.models,
+    ]);
+    if (merged) next[provider.id] = merged;
+  }
+  return next;
+}
+
 export function getModelsForProvider(
   provider: ProviderId,
   providerModels?: ProviderModelLists | Partial<ProviderModelLists> | null,
@@ -89,8 +117,10 @@ export function getModelsForProvider(
 
 export async function getSettings(): Promise<Settings> {
   const result = await browser.storage.local.get(SETTINGS_KEY);
-  const stored = result[SETTINGS_KEY] as Partial<Settings> | undefined;
-  if (!stored) return { ...DEFAULT_SETTINGS, providerModels: defaultProviderModels() };
+  const stored = result[SETTINGS_KEY] as StoredSettings | undefined;
+  if (!stored) {
+    return { ...DEFAULT_SETTINGS, providerModels: defaultProviderModels() };
+  }
 
   const defaultProvider = isProviderId(stored.defaultProvider)
     ? stored.defaultProvider
@@ -102,7 +132,24 @@ export async function getSettings(): Promise<Settings> {
       : getProvider(defaultProvider).defaultModel;
 
   const theme = isThemeId(stored.theme) ? stored.theme : DEFAULT_SETTINGS.theme;
-  const providerModels = sanitizeProviderModels(stored.providerModels);
+
+  let providerModels = sanitizeProviderModels(stored.providerModels);
+  const appliedVersion =
+    typeof stored.modelsVersion === 'number' ? stored.modelsVersion : 0;
+  if (appliedVersion < MODELS_SCHEMA_VERSION) {
+    providerModels = mergeDefaultModels(providerModels);
+    // Grava a versão para a mesclagem não se repetir (e não ressuscitar
+    // modelos que o usuário remover de propósito daqui em diante).
+    await browser.storage.local.set({
+      [SETTINGS_KEY]: {
+        defaultProvider,
+        defaultModel,
+        theme,
+        providerModels,
+        modelsVersion: MODELS_SCHEMA_VERSION,
+      },
+    });
+  }
 
   return { defaultProvider, defaultModel, theme, providerModels };
 }
@@ -123,7 +170,8 @@ export async function saveSettings(settings: Settings): Promise<void> {
       defaultModel: model,
       theme: settings.theme,
       providerModels,
-    } satisfies Settings,
+      modelsVersion: MODELS_SCHEMA_VERSION,
+    } satisfies StoredSettings,
   });
 }
 
