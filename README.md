@@ -4,9 +4,13 @@ Extensão para **Chrome** e **Brave** que facilita conversar com LLMs a partir d
 
 ## Demo
 
-Selecionar um trecho da página → clicar no botão **🤖** → ajustar a mensagem → enviar e ver a resposta em streaming:
+1. **Selecionar um texto e enviar a primeira mensagem** — o trecho selecionado vai pré-preenchido no composer:
 
-![Demo do sidechat-ai: um texto é selecionado na página, o botão abre o popup com a mensagem pré-preenchida e a resposta do modelo chega em streaming](assets/demo.gif)
+![Demo 1: um texto é selecionado na página, o botão abre o popup com a mensagem pré-preenchida e a resposta do modelo chega em streaming](assets/demo-1.gif)
+
+2. **Enviar uma nova mensagem na mesma sessão** — o histórico e o contexto da conversa são mantidos:
+
+![Demo 2: uma nova mensagem é enviada na mesma sessão, mantendo o histórico da conversa](assets/demo-2.gif)
 
 ## O que faz
 
