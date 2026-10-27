@@ -92,6 +92,15 @@ export function ChatPopup({
   const streamStartRef = useRef<number | null>(null);
   const streamDoneSessionRef = useRef<string | null>(null);
   const bootstrappedRef = useRef(false);
+  /**
+   * Só começa a persistir a escolha depois que o bootstrap aplicou a última
+   * escolha salva — senão os valores padrão sobrescreveriam o que foi lembrado.
+   */
+  const choiceReadyRef = useRef(false);
+  /** Último provider/modelo escolhidos no chat, restaurados ao reabrir. */
+  const lastChoiceRef = useRef<{ provider: ProviderId; model: string } | null>(
+    null,
+  );
 
   const resetStreamReveal = useCallback(() => {
     streamFullRef.current = '';
@@ -211,6 +220,12 @@ export function ChatPopup({
       withKeys: readonly ProviderId[] = providersWithKey,
       sessionList: ChatSession[] = sessions,
     ) => {
+      // Prioridade máxima: a última escolha explícita do usuário no chat.
+      const last = lastChoiceRef.current;
+      if (last && withKeys.includes(last.provider)) {
+        applyProviderChoice(last.provider, last.model);
+        return;
+      }
       const previousFromSession =
         session?.provider ??
         sessionList.find((s) => s.pageUrl === pageKey)?.provider ??
@@ -279,6 +294,7 @@ export function ChatPopup({
         let settingsProvider: ProviderId = 'openai';
         let settingsModel = 'gpt-4o-mini';
         let models = defaultProviderModels();
+        let lastChoice: { provider: ProviderId; model: string } | null = null;
 
         const settings = await sendToBackground({ type: 'GET_SETTINGS' });
         if (settings.type === 'SETTINGS_RESULT') {
@@ -290,6 +306,13 @@ export function ChatPopup({
           setDefaultModel(settingsModel);
           setTheme(settings.theme);
           setProviderModels(models);
+          if (settings.lastProvider && settings.lastModel) {
+            lastChoice = {
+              provider: settings.lastProvider,
+              model: settings.lastModel,
+            };
+            lastChoiceRef.current = lastChoice;
+          }
         }
 
         const vault = await sendToBackground({ type: 'VAULT_STATUS' });
@@ -312,6 +335,14 @@ export function ChatPopup({
           return;
         }
 
+        // Sem sessão nesta página: pré-seleciona a última escolha do usuário.
+        if (lastChoice) {
+          const known = getModelsForProvider(lastChoice.provider, models);
+          setProvider(lastChoice.provider);
+          applyModel(lastChoice.model, known);
+          return;
+        }
+
         const preferred = pickPreferredProvider({
           withKeys,
           previous: list[0]?.provider ?? null,
@@ -328,6 +359,9 @@ export function ChatPopup({
         if (err instanceof ExtensionContextInvalidatedError) {
           handleContextDead();
         }
+      } finally {
+        // A partir daqui a escolha inicial já foi aplicada; persistir é seguro.
+        choiceReadyRef.current = true;
       }
     })();
   }, [applyModel, handleContextDead, loadSession, pageKey]);
@@ -468,6 +502,28 @@ export function ChatPopup({
   }, [contextDead, unlocked]);
 
   const resolvedModel = effectiveModelId(model, customModel);
+
+  /**
+   * Lembra provider/modelo escolhidos no chat. Como o popup é desmontado ao
+   * fechar, a escolha precisa ir para o storage para voltar pré-selecionada.
+   */
+  useEffect(() => {
+    if (!unlocked || contextDead) return;
+    if (!resolvedModel) return;
+    if (!choiceReadyRef.current) return;
+    const last = lastChoiceRef.current;
+    if (last && last.provider === provider && last.model === resolvedModel) {
+      return;
+    }
+    lastChoiceRef.current = { provider, model: resolvedModel };
+    void sendToBackground({
+      type: 'SAVE_LAST_CHOICE',
+      provider,
+      model: resolvedModel,
+    }).catch(() => {
+      // Silencioso: não é crítico para o chat.
+    });
+  }, [contextDead, provider, resolvedModel, unlocked]);
 
   const ensureSession = async (): Promise<string> => {
     if (sessionId) return sessionId;

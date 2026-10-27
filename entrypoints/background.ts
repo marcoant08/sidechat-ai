@@ -17,6 +17,7 @@ import {
 } from '../lib/storage/sessions';
 import {
   getSettings,
+  saveLastChoice,
   saveSettings,
   saveTheme,
 } from '../lib/storage/settings';
@@ -206,6 +207,10 @@ async function dispatch(
     }
     case 'SET_THEME': {
       await saveTheme(message.theme);
+      return { type: 'OK' };
+    }
+    case 'SAVE_LAST_CHOICE': {
+      await saveLastChoice(message.provider, message.model);
       return { type: 'OK' };
     }
     case 'LIST_SESSIONS': {

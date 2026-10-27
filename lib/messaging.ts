@@ -22,6 +22,7 @@ export type ClientMessage =
       providerModels?: ProviderModelLists;
     }
   | { type: 'SET_THEME'; theme: ThemeId }
+  | { type: 'SAVE_LAST_CHOICE'; provider: ProviderId; model: string }
   | { type: 'LIST_SESSIONS' }
   | { type: 'GET_SESSION'; sessionId: string }
   | {
@@ -64,6 +65,8 @@ export type ServerMessage =
       defaultModel: string;
       theme: ThemeId;
       providerModels: ProviderModelLists;
+      lastProvider?: ProviderId;
+      lastModel?: string;
     }
   | { type: 'SESSIONS_RESULT'; sessions: unknown }
   | { type: 'SESSION_RESULT'; session: unknown }
@@ -139,6 +142,14 @@ export function parseClientMessage(raw: unknown): ClientMessage {
     case 'SET_THEME': {
       if (!isThemeId(msg.theme)) throw new Error('Tema inválido.');
       return { type, theme: msg.theme };
+    }
+
+    case 'SAVE_LAST_CHOICE': {
+      if (!isProviderId(msg.provider)) throw new Error('Provider inválido.');
+      if (!isNonEmptyString(msg.model, 200)) {
+        throw new Error('Modelo inválido.');
+      }
+      return { type, provider: msg.provider, model: msg.model };
     }
 
     case 'GET_SESSION': {

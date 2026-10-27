@@ -16,6 +16,10 @@ export interface Settings {
   defaultModel: string;
   theme: ThemeId;
   providerModels: ProviderModelLists;
+  /** Último provider escolhido no chat, para pré-selecionar ao reabrir. */
+  lastProvider?: ProviderId;
+  /** Último modelo escolhido no chat, para pré-selecionar ao reabrir. */
+  lastModel?: string;
 }
 
 interface StoredSettings extends Partial<Settings> {
@@ -147,11 +151,30 @@ export async function getSettings(): Promise<Settings> {
         theme,
         providerModels,
         modelsVersion: MODELS_SCHEMA_VERSION,
+        lastProvider: isProviderId(stored.lastProvider)
+          ? stored.lastProvider
+          : undefined,
+        lastModel:
+          typeof stored.lastModel === 'string' && stored.lastModel.trim()
+            ? stored.lastModel.trim()
+            : undefined,
       },
     });
   }
 
-  return { defaultProvider, defaultModel, theme, providerModels };
+  return {
+    defaultProvider,
+    defaultModel,
+    theme,
+    providerModels,
+    lastProvider: isProviderId(stored.lastProvider)
+      ? stored.lastProvider
+      : undefined,
+    lastModel:
+      typeof stored.lastModel === 'string' && stored.lastModel.trim()
+        ? stored.lastModel.trim()
+        : undefined,
+  };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
@@ -164,6 +187,8 @@ export async function saveSettings(settings: Settings): Promise<void> {
     throw new Error('Tema inválido.');
   }
   const providerModels = sanitizeProviderModels(settings.providerModels);
+  // Preserva a última escolha do chat: as Options não a editam.
+  const current = await getSettings();
   await browser.storage.local.set({
     [SETTINGS_KEY]: {
       defaultProvider: settings.defaultProvider,
@@ -171,6 +196,30 @@ export async function saveSettings(settings: Settings): Promise<void> {
       theme: settings.theme,
       providerModels,
       modelsVersion: MODELS_SCHEMA_VERSION,
+      lastProvider: current.lastProvider ?? settings.lastProvider,
+      lastModel: current.lastModel ?? settings.lastModel,
+    } satisfies StoredSettings,
+  });
+}
+
+/** Guarda o último provider/modelo escolhidos no chat. */
+export async function saveLastChoice(
+  provider: ProviderId,
+  model: string,
+): Promise<void> {
+  if (!isProviderId(provider)) return;
+  const trimmed = model.trim();
+  if (!trimmed) return;
+  const current = await getSettings();
+  await browser.storage.local.set({
+    [SETTINGS_KEY]: {
+      defaultProvider: current.defaultProvider,
+      defaultModel: current.defaultModel,
+      theme: current.theme,
+      providerModels: current.providerModels,
+      modelsVersion: MODELS_SCHEMA_VERSION,
+      lastProvider: provider,
+      lastModel: trimmed,
     } satisfies StoredSettings,
   });
 }
