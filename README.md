@@ -2,6 +2,12 @@
 
 Extensão para **Chrome** e **Brave** que facilita conversar com LLMs a partir de texto selecionado em qualquer página — no estilo do botão do Google Tradutor, mas com chat.
 
+## Demo
+
+Selecionar um trecho da página → clicar no botão **🤖** → ajustar a mensagem → enviar e ver a resposta em streaming:
+
+![Demo do sidechat-ai: um texto é selecionado na página, o botão abre o popup com a mensagem pré-preenchida e a resposta do modelo chega em streaming](assets/demo.gif)
+
 ## O que faz
 
 1. Você seleciona um texto na página.
