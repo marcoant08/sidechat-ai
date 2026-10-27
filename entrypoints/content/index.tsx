@@ -11,7 +11,11 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: 'sidechat-ai',
       position: 'overlay',
-      zIndex: 2147483646,
+      /**
+       * z-index máximo: garante que o botão/emoji fique sempre acima de
+       * widgets da página (ex.: Google Tradutor) e nunca seja encoberto.
+       */
+      zIndex: 2147483647,
       /**
        * Sem isso, os eventos de teclado digitados no popup borbulham para fora
        * do shadow root e a página reage a eles (atalhos, busca interna, etc.).
