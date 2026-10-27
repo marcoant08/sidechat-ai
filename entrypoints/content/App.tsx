@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -152,6 +153,38 @@ export default function App() {
       document.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('pointerup', endDrag);
       document.removeEventListener('pointercancel', endDrag);
+    };
+  }, [open]);
+
+  /**
+   * O popup muda de tamanho (cofre bloqueado → chat) e a janela pode ser
+   * redimensionada. Reencuadra o popup para que nada fique fora da tela, sem
+   * o usuário precisar arrastar.
+   */
+  useLayoutEffect(() => {
+    if (!open) return;
+    const wrap = popupWrapRef.current;
+    if (!wrap) return;
+
+    const fit = () => {
+      setPopupPos((prev) => {
+        const next = clampPopupPosition(
+          prev.x,
+          prev.y,
+          wrap.offsetWidth,
+          wrap.offsetHeight,
+        );
+        return next.x === prev.x && next.y === prev.y ? prev : next;
+      });
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(wrap);
+    window.addEventListener('resize', fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
     };
   }, [open]);
 
