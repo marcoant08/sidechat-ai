@@ -86,6 +86,7 @@ export function ChatPopup({
   providerModelsRef.current = providerModels;
   const scrollRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   /** Texto completo recebido da API (ainda pode crescer durante o stream). */
   const streamFullRef = useRef('');
   const streamStartRef = useRef<number | null>(null);
@@ -458,6 +459,14 @@ export function ChatPopup({
     root.scrollTop = root.scrollHeight;
   }, [unlocked, streamingText, displayMessages]);
 
+  // O chat já abre com o cursor no campo de mensagem: o usuário pode digitar direto.
+  useEffect(() => {
+    if (contextDead || !unlocked) return;
+    const field = composerRef.current;
+    if (!field || field.disabled) return;
+    field.focus({ preventScroll: true });
+  }, [contextDead, unlocked]);
+
   const resolvedModel = effectiveModelId(model, customModel);
 
   const ensureSession = async (): Promise<string> => {
@@ -580,12 +589,16 @@ export function ChatPopup({
         setComposer(content);
         setSending(false);
         setError(res.error);
+        composerRef.current?.focus({ preventScroll: true });
         return;
       }
+      // Clique no botão Enviar tira o foco do campo; devolve para digitar a próxima.
+      composerRef.current?.focus({ preventScroll: true });
     } catch (err) {
       setPendingUserMessage(null);
       setComposer(content);
       setSending(false);
+      composerRef.current?.focus({ preventScroll: true });
       if (err instanceof ExtensionContextInvalidatedError) {
         handleContextDead();
         return;
@@ -724,6 +737,12 @@ export function ChatPopup({
         .filter(Boolean)
         .join(' ')}
       data-theme={theme}
+      onKeyDown={(event) => {
+        // Esc fecha o popup mesmo com os eventos de teclado isolados do site.
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        onClose();
+      }}
     >
       <header
         className="sidechat-popup-header"
@@ -880,9 +899,11 @@ export function ChatPopup({
 
           <Composer
             value={composer}
-            disabled={sending || contextDead}
+            disabled={contextDead}
+            busy={sending}
             onChange={setComposer}
             onSend={() => void handleSend()}
+            textareaRef={composerRef}
           />
         </>
       )}
