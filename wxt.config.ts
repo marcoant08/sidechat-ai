@@ -12,6 +12,7 @@ export default defineConfig({
       'https://api.groq.com/*',
       'https://api.anthropic.com/*',
       'https://openrouter.ai/*',
+      'https://www.googleapis.com/*',
     ],
     // Os wallpapers foram removidos: o fundo do chat agora é cor sólida em CSS.
     web_accessible_resources: [],

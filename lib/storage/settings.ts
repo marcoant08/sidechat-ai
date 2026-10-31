@@ -16,6 +16,8 @@ export interface Settings {
   defaultModel: string;
   theme: ThemeId;
   providerModels: ProviderModelLists;
+  /** Busca no Google automática antes de responder. */
+  searchEnabled: boolean;
   /** Último provider escolhido no chat, para pré-selecionar ao reabrir. */
   lastProvider?: ProviderId;
   /** Último modelo escolhido no chat, para pré-selecionar ao reabrir. */
@@ -52,10 +54,15 @@ const DEFAULT_SETTINGS: Settings = {
   defaultModel: 'gpt-4o-mini',
   theme: 'light',
   providerModels: defaultProviderModels(),
+  searchEnabled: false,
 };
 
 export function isThemeId(value: unknown): value is ThemeId {
   return value === 'light' || value === 'dark';
+}
+
+function normalizeSearchEnabled(value: unknown): boolean {
+  return value === true;
 }
 
 function normalizeModelList(value: unknown): string[] | null {
@@ -136,6 +143,7 @@ export async function getSettings(): Promise<Settings> {
       : getProvider(defaultProvider).defaultModel;
 
   const theme = isThemeId(stored.theme) ? stored.theme : DEFAULT_SETTINGS.theme;
+  const searchEnabled = normalizeSearchEnabled(stored.searchEnabled);
 
   let providerModels = sanitizeProviderModels(stored.providerModels);
   const appliedVersion =
@@ -150,6 +158,7 @@ export async function getSettings(): Promise<Settings> {
         defaultModel,
         theme,
         providerModels,
+        searchEnabled,
         modelsVersion: MODELS_SCHEMA_VERSION,
         lastProvider: isProviderId(stored.lastProvider)
           ? stored.lastProvider
@@ -167,6 +176,7 @@ export async function getSettings(): Promise<Settings> {
     defaultModel,
     theme,
     providerModels,
+    searchEnabled,
     lastProvider: isProviderId(stored.lastProvider)
       ? stored.lastProvider
       : undefined,
@@ -195,6 +205,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
       defaultModel: model,
       theme: settings.theme,
       providerModels,
+      searchEnabled: settings.searchEnabled ?? current.searchEnabled,
       modelsVersion: MODELS_SCHEMA_VERSION,
       lastProvider: current.lastProvider ?? settings.lastProvider,
       lastModel: current.lastModel ?? settings.lastModel,
@@ -217,6 +228,7 @@ export async function saveLastChoice(
       defaultModel: current.defaultModel,
       theme: current.theme,
       providerModels: current.providerModels,
+      searchEnabled: current.searchEnabled,
       modelsVersion: MODELS_SCHEMA_VERSION,
       lastProvider: provider,
       lastModel: trimmed,

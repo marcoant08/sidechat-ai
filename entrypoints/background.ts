@@ -8,6 +8,15 @@ import { streamChat } from '../lib/providers/registry';
 import { MAX_RESPONSE_TOKENS } from '../lib/limits';
 import { resolveModelId, type ChatMessage } from '../lib/providers/types';
 import {
+  buildSearchQuery,
+  decideSearchNeeded,
+} from '../lib/search/decide';
+import {
+  formatSearchResults,
+  googleSearch,
+  hasGoogleSearchCredentials,
+} from '../lib/search/google';
+import {
   appendMessages,
   clearSessions,
   createSession,
@@ -24,9 +33,11 @@ import {
 import {
   disableVaultPassword,
   getProviderApiKey,
+  getSearchCredentials,
   getVaultStatus,
   lockVault,
   setProviderApiKey,
+  setSearchCredentials,
   setupVault,
   unlockVault,
 } from '../lib/storage/vault';
@@ -118,15 +129,67 @@ async function handleChatSend(
     })),
   ];
 
+  const settings = await getSettings();
+  const searchCreds = settings.searchEnabled
+    ? await getSearchCredentials()
+    : null;
+  const searchReady = hasGoogleSearchCredentials(searchCreds);
+
   // Acknowledge start; stream continues asynchronously
   void (async () => {
     let fullText = '';
     try {
+      let requestMessages = history;
+
+      // Busca automática: o modelo decide se precisa de dados atuais da web.
+      if (settings.searchEnabled && searchReady && searchCreds) {
+        const shouldSearch = await decideSearchNeeded({
+          provider: msg.provider,
+          model,
+          apiKey,
+          history,
+        });
+        if (shouldSearch) {
+          const query = buildSearchQuery(history);
+          if (query) {
+            await notifyTab(tabId, {
+              type: 'CHAT_STATUS',
+              sessionId: msg.sessionId,
+              status: 'searching',
+            });
+            let searchBlock = '';
+            try {
+              const results = await googleSearch({
+                googleApiKey: searchCreds.googleApiKey,
+                googleCx: searchCreds.googleCx,
+                query,
+              });
+              searchBlock = formatSearchResults(query, results);
+            } catch (searchErr) {
+              const detail =
+                searchErr instanceof Error ? searchErr.message : 'falha';
+              searchBlock = `A busca na web falhou (${detail}). Responda com o que você já sabe, avisando que não conseguiu consultar a web.`;
+            }
+            requestMessages = [
+              history[0]!,
+              { role: 'system', content: searchBlock },
+              ...history.slice(1),
+            ];
+          }
+        }
+      }
+
+      await notifyTab(tabId, {
+        type: 'CHAT_STATUS',
+        sessionId: msg.sessionId,
+        status: 'idle',
+      });
+
       for await (const delta of streamChat({
         provider: msg.provider,
         model,
         apiKey,
-        messages: history,
+        messages: requestMessages,
         maxTokens: MAX_RESPONSE_TOKENS,
       })) {
         fullText += delta;
@@ -191,6 +254,13 @@ async function dispatch(
       await setProviderApiKey(message.provider, message.apiKey);
       return { type: 'OK' };
     }
+    case 'VAULT_SET_SEARCH': {
+      await setSearchCredentials({
+        googleApiKey: message.googleApiKey,
+        googleCx: message.googleCx,
+      });
+      return { type: 'OK' };
+    }
     case 'GET_SETTINGS': {
       const settings = await getSettings();
       return { type: 'SETTINGS_RESULT', ...settings };
@@ -202,6 +272,7 @@ async function dispatch(
         defaultModel: message.defaultModel,
         theme: current.theme,
         providerModels: message.providerModels ?? current.providerModels,
+        searchEnabled: message.searchEnabled ?? current.searchEnabled,
       });
       return { type: 'OK' };
     }

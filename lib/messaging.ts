@@ -14,12 +14,19 @@ export type ClientMessage =
   | { type: 'VAULT_LOCK' }
   | { type: 'VAULT_DISABLE_PASSWORD' }
   | { type: 'VAULT_SET_KEY'; provider: ProviderId; apiKey: string }
+  | {
+      type: 'VAULT_SET_SEARCH';
+      /** undefined mantém a credencial atual; vazio remove. */
+      googleApiKey?: string;
+      googleCx?: string;
+    }
   | { type: 'GET_SETTINGS' }
   | {
       type: 'SAVE_SETTINGS';
       defaultProvider: ProviderId;
       defaultModel: string;
       providerModels?: ProviderModelLists;
+      searchEnabled?: boolean;
     }
   | { type: 'SET_THEME'; theme: ThemeId }
   | { type: 'SAVE_LAST_CHOICE'; provider: ProviderId; model: string }
@@ -58,6 +65,7 @@ export type ServerMessage =
       unlocked: boolean;
       passwordDisabled: boolean;
       providersWithKey: ProviderId[];
+      hasGoogleSearch: boolean;
     }
   | {
       type: 'SETTINGS_RESULT';
@@ -65,11 +73,13 @@ export type ServerMessage =
       defaultModel: string;
       theme: ThemeId;
       providerModels: ProviderModelLists;
+      searchEnabled: boolean;
       lastProvider?: ProviderId;
       lastModel?: string;
     }
   | { type: 'SESSIONS_RESULT'; sessions: unknown }
   | { type: 'SESSION_RESULT'; session: unknown }
+  | { type: 'CHAT_STATUS'; sessionId: string; status: 'searching' | 'idle'; note?: string }
   | { type: 'CHAT_CHUNK'; sessionId: string; delta: string }
   | { type: 'CHAT_DONE'; sessionId: string; fullText: string }
   | { type: 'CHAT_ERROR'; sessionId: string; error: string };
@@ -120,6 +130,21 @@ export function parseClientMessage(raw: unknown): ClientMessage {
       return { type, provider: msg.provider, apiKey: msg.apiKey };
     }
 
+    case 'VAULT_SET_SEARCH': {
+      const readCred = (value: unknown): string | undefined => {
+        if (value === undefined) return undefined;
+        if (typeof value !== 'string' || value.length > 512) {
+          throw new Error('Credencial de busca inválida.');
+        }
+        return value;
+      };
+      return {
+        type,
+        googleApiKey: readCred(msg.googleApiKey),
+        googleCx: readCred(msg.googleCx),
+      };
+    }
+
     case 'SAVE_SETTINGS': {
       if (!isProviderId(msg.defaultProvider)) {
         throw new Error('Provider inválido.');
@@ -131,11 +156,14 @@ export function parseClientMessage(raw: unknown): ClientMessage {
         msg.providerModels === undefined
           ? undefined
           : sanitizeProviderModels(msg.providerModels);
+      const searchEnabled =
+        msg.searchEnabled === undefined ? undefined : Boolean(msg.searchEnabled);
       return {
         type,
         defaultProvider: msg.defaultProvider,
         defaultModel: msg.defaultModel,
         providerModels,
+        searchEnabled,
       };
     }
 

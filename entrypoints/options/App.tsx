@@ -3,6 +3,7 @@ import {
   Key,
   LockKey,
   LockKeyOpen,
+  MagnifyingGlass,
   Plus,
   Trash,
   ArrowCounterClockwise,
@@ -35,6 +36,10 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(false);
   const [passwordDisabled, setPasswordDisabled] = useState(false);
   const [providersWithKey, setProvidersWithKey] = useState<ProviderId[]>([]);
+  const [hasGoogleSearch, setHasGoogleSearch] = useState(false);
+  const [googleApiKeyDraft, setGoogleApiKeyDraft] = useState('');
+  const [googleCxDraft, setGoogleCxDraft] = useState('');
+  const [searchEnabled, setSearchEnabled] = useState(false);
   const [passphrase, setPassphrase] = useState('');
   const [passphraseConfirm, setPassphraseConfirm] = useState('');
   /** Formulário de definir/ativar senha quando o cofre usa o modo sem senha. */
@@ -68,11 +73,13 @@ export default function App() {
       setUnlocked(vault.unlocked);
       setPasswordDisabled(vault.passwordDisabled);
       setProvidersWithKey(vault.providersWithKey);
+      setHasGoogleSearch(vault.hasGoogleSearch);
     }
     const settings = await sendToBackground({ type: 'GET_SETTINGS' });
     if (settings.type === 'SETTINGS_RESULT') {
       setDefaultProvider(settings.defaultProvider);
       setProviderModels(settings.providerModels);
+      setSearchEnabled(settings.searchEnabled);
       const known = getModelsForProvider(
         settings.defaultProvider,
         settings.providerModels,
@@ -176,6 +183,22 @@ export default function App() {
     await refresh();
   };
 
+  const handleSaveSearch = async () => {
+    const res = await sendToBackground({
+      type: 'VAULT_SET_SEARCH',
+      googleApiKey: googleApiKeyDraft.trim() || undefined,
+      googleCx: googleCxDraft.trim() || undefined,
+    });
+    if (res.type === 'ERROR') {
+      showErr(res.error);
+      return;
+    }
+    setGoogleApiKeyDraft('');
+    setGoogleCxDraft('');
+    showOk('Credenciais da busca salvas no cofre.');
+    await refresh();
+  };
+
   const handleSaveSettings = async () => {
     const model = effectiveModelId(defaultModel, customModel);
     if (!model) {
@@ -187,6 +210,7 @@ export default function App() {
       defaultProvider,
       defaultModel: model,
       providerModels,
+      searchEnabled,
     });
     if (res.type === 'ERROR') {
       showErr(res.error);
@@ -566,6 +590,25 @@ export default function App() {
                   </div>
                 </div>
               )}
+              <div className="opts-field opts-field-span">
+                <label htmlFor="opts-search">
+                  Busca no Google automática
+                </label>
+                <div className="opts-toggle-row">
+                  <input
+                    id="opts-search"
+                    type="checkbox"
+                    className="opts-checkbox"
+                    checked={searchEnabled}
+                    onChange={(e) => setSearchEnabled(e.target.checked)}
+                  />
+                  <span className="opts-hint">
+                    Antes de responder, o modelo decide se precisa de dados
+                    atuais da web e faz a busca quando fizer sentido. Requer as
+                    credenciais abaixo.
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -725,6 +768,83 @@ export default function App() {
             <button type="button" className="opts-btn" onClick={resetAllModels}>
               Restaurar todos
             </button>
+          </div>
+        </section>
+
+        <section className="opts-card opts-card-wide">
+          <div className="opts-card-head">
+            <MagnifyingGlass size={20} weight="duotone" />
+            <div>
+              <h2>Busca no Google</h2>
+              <p>
+                Credenciais da Custom Search JSON API. Crie uma API key no
+                Google Cloud (com a Custom Search API habilitada) e um
+                Programmable Search Engine para obter o <code>cx</code>. Ficam
+                cifradas no cofre junto das API keys.
+              </p>
+            </div>
+          </div>
+
+          <div className="opts-defaults">
+            <div className="opts-field">
+              <label htmlFor="opts-google-key">Google API key</label>
+              <div className="opts-control">
+                <input
+                  id="opts-google-key"
+                  className="opts-input"
+                  type="password"
+                  size={1}
+                  autoComplete="off"
+                  disabled={!unlocked}
+                  placeholder={
+                    unlocked
+                      ? hasGoogleSearch
+                        ? 'Cole para substituir'
+                        : 'AIza…'
+                      : 'Desbloqueie o cofre'
+                  }
+                  value={googleApiKeyDraft}
+                  onChange={(e) => setGoogleApiKeyDraft(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="opts-field">
+              <label htmlFor="opts-google-cx">Search engine ID (cx)</label>
+              <div className="opts-control">
+                <input
+                  id="opts-google-cx"
+                  className="opts-input"
+                  size={1}
+                  autoComplete="off"
+                  disabled={!unlocked}
+                  placeholder={
+                    unlocked
+                      ? hasGoogleSearch
+                        ? 'Cole para substituir'
+                        : 'ex: 017576662512468239146:omuauf_lfve'
+                      : 'Desbloqueie o cofre'
+                  }
+                  value={googleCxDraft}
+                  onChange={(e) => setGoogleCxDraft(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="opts-actions">
+            <button
+              type="button"
+              className="opts-btn"
+              disabled={!unlocked}
+              onClick={() => void handleSaveSearch()}
+            >
+              Salvar credenciais de busca
+            </button>
+            <span
+              className={hasGoogleSearch ? 'opts-tag opts-tag-ok' : 'opts-tag'}
+            >
+              {hasGoogleSearch ? 'Configurado' : 'Não configurado'}
+            </span>
           </div>
         </section>
 

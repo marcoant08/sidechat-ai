@@ -72,6 +72,7 @@ export function ChatPopup({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [searchStatus, setSearchStatus] = useState<'searching' | null>(null);
   const [contextDead, setContextDead] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [controlsHidden, setControlsHidden] = useState(false);
@@ -107,6 +108,7 @@ export function ChatPopup({
     streamStartRef.current = null;
     streamDoneSessionRef.current = null;
     setStreamingText('');
+    setSearchStatus(null);
   }, []);
 
   const modelOptions = useMemo(
@@ -389,6 +391,9 @@ export function ChatPopup({
     const listener = (raw: unknown) => {
       const msg = raw as ServerMessage;
       if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
+      if (msg.type === 'CHAT_STATUS' && msg.sessionId === sessionId) {
+        setSearchStatus(msg.status === 'searching' ? 'searching' : null);
+      }
       if (msg.type === 'CHAT_CHUNK' && msg.sessionId === sessionId) {
         if (streamStartRef.current === null) {
           streamStartRef.current = performance.now();
@@ -444,6 +449,7 @@ export function ChatPopup({
         streamStartRef.current = null;
         setStreamingText('');
         setSending(false);
+        setSearchStatus(null);
         void loadSession(doneSessionId).then(() => {
           setPendingUserMessage(null);
         });
@@ -632,6 +638,7 @@ export function ChatPopup({
 
     setSending(true);
     resetStreamReveal();
+    setSearchStatus(null);
     setComposer('');
     setPendingUserMessage(optimisticUser);
 
@@ -955,6 +962,12 @@ export function ChatPopup({
           </div>
 
           {error && <p className="sidechat-error">{error}</p>}
+
+          {searchStatus === 'searching' && (
+            <p className="sidechat-searching" role="status">
+              Buscando na web…
+            </p>
+          )}
 
           <Composer
             value={composer}

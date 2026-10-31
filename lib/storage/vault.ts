@@ -16,10 +16,18 @@ export const MIN_PASSPHRASE_LENGTH = 4;
 
 export type ProviderKeyMap = Partial<Record<ProviderId, string>>;
 
+/** Credenciais da busca no Google (Programmable Search Engine). */
+export interface SearchCredentialMap {
+  googleApiKey?: string;
+  googleCx?: string;
+}
+
 interface VaultStorage {
   salt: string;
   /** Encrypted JSON of ProviderKeyMap */
   keysBlob: EncryptedBlob | null;
+  /** Encrypted JSON of SearchCredentialMap */
+  searchBlob?: EncryptedBlob | null;
   /** Verifier: encrypt known string to validate passphrase */
   verifier: EncryptedBlob | null;
   /**
@@ -29,11 +37,14 @@ interface VaultStorage {
   passwordDisabled?: boolean;
   /** Keys em claro; usadas apenas quando `passwordDisabled` é true. */
   openKeys?: ProviderKeyMap;
+  /** Credenciais de busca em claro; usadas apenas no modo sem senha. */
+  openSearch?: SearchCredentialMap;
 }
 
 interface VaultSession {
   rawKeyBase64: string;
   keys: ProviderKeyMap;
+  search: SearchCredentialMap;
 }
 
 const VERIFIER_PLAINTEXT = 'sidechat-vault-ok';
@@ -41,11 +52,13 @@ const VERIFIER_PLAINTEXT = 'sidechat-vault-ok';
 const emptyVault = (): VaultStorage => ({
   salt: generateSalt(),
   keysBlob: null,
+  searchBlob: null,
   verifier: null,
 });
 
 let memoryKey: CryptoKey | null = null;
 let memoryKeys: ProviderKeyMap = {};
+let memorySearch: SearchCredentialMap = {};
 /** Cofre em modo aberto (sem senha). */
 let memoryOpen = false;
 let hydratePromise: Promise<void> | null = null;
@@ -79,10 +92,15 @@ async function importRawKey(rawBase64: string): Promise<CryptoKey> {
   );
 }
 
-async function writeSession(keys: ProviderKeyMap, key: CryptoKey): Promise<void> {
+async function writeSession(
+  keys: ProviderKeyMap,
+  search: SearchCredentialMap,
+  key: CryptoKey,
+): Promise<void> {
   const session: VaultSession = {
     rawKeyBase64: await exportRawKey(key),
     keys,
+    search,
   };
   await browser.storage.session.set({ [VAULT_SESSION_KEY]: session });
 }
@@ -113,16 +131,19 @@ export async function hydrateVaultFromSession(): Promise<void> {
         memoryOpen = true;
         memoryKey = null;
         memoryKeys = { ...(vault.openKeys ?? {}) };
+        memorySearch = { ...(vault.openSearch ?? {}) };
         return;
       }
       const session = await readSession();
       if (!session) return;
       memoryKey = await importRawKey(session.rawKeyBase64);
       memoryKeys = { ...session.keys };
+      memorySearch = { ...(session.search ?? {}) };
     } catch {
       memoryKey = null;
       memoryOpen = false;
       memoryKeys = {};
+      memorySearch = {};
       await clearSession();
     } finally {
       hydratePromise = null;
@@ -144,6 +165,7 @@ export async function lockVault(): Promise<void> {
   memoryKey = null;
   memoryOpen = false;
   memoryKeys = {};
+  memorySearch = {};
   await clearSession();
 }
 
@@ -177,19 +199,25 @@ export async function setupVault(passphrase: string): Promise<void> {
   const seededKeys: ProviderKeyMap = vault.passwordDisabled
     ? { ...(vault.openKeys ?? {}) }
     : {};
+  const seededSearch: SearchCredentialMap = vault.passwordDisabled
+    ? { ...(vault.openSearch ?? {}) }
+    : {};
   if (vault.passwordDisabled) vault.salt = generateSalt();
 
   const key = await deriveVaultKey(passphrase, vault.salt);
   vault.verifier = await encryptString(key, VERIFIER_PLAINTEXT);
   vault.keysBlob = await encryptString(key, JSON.stringify(seededKeys));
+  vault.searchBlob = await encryptString(key, JSON.stringify(seededSearch));
   vault.passwordDisabled = false;
   delete vault.openKeys;
+  delete vault.openSearch;
   await writeVault(vault);
 
   memoryKey = key;
   memoryOpen = false;
   memoryKeys = seededKeys;
-  await writeSession(memoryKeys, key);
+  memorySearch = seededSearch;
+  await writeSession(memoryKeys, memorySearch, key);
 }
 
 /**
@@ -211,15 +239,21 @@ export async function disableVaultPassword(): Promise<void> {
   const keys: ProviderKeyMap = memoryKey
     ? { ...memoryKeys }
     : { ...(vault.openKeys ?? {}) };
+  const search: SearchCredentialMap = memoryKey
+    ? { ...memorySearch }
+    : { ...(vault.openSearch ?? {}) };
   vault.openKeys = keys;
+  vault.openSearch = search;
   vault.passwordDisabled = true;
   vault.keysBlob = null;
+  vault.searchBlob = null;
   vault.verifier = null;
   await writeVault(vault);
 
   memoryKey = null;
   memoryOpen = true;
   memoryKeys = keys;
+  memorySearch = search;
   await clearSession();
 }
 
@@ -228,6 +262,7 @@ export async function unlockVault(passphrase: string): Promise<void> {
   if (vault.passwordDisabled) {
     memoryOpen = true;
     memoryKeys = { ...(vault.openKeys ?? {}) };
+    memorySearch = { ...(vault.openSearch ?? {}) };
     return;
   }
   if (!vault.verifier) {
@@ -250,13 +285,24 @@ export async function unlockVault(passphrase: string): Promise<void> {
   } else {
     memoryKeys = {};
   }
-  await writeSession(memoryKeys, key);
+  if (vault.searchBlob) {
+    try {
+      const json = await decryptString(key, vault.searchBlob);
+      memorySearch = JSON.parse(json) as SearchCredentialMap;
+    } catch {
+      memorySearch = {};
+    }
+  } else {
+    memorySearch = {};
+  }
+  await writeSession(memoryKeys, memorySearch, key);
 }
 
-async function persistKeys(): Promise<void> {
+async function persistState(): Promise<void> {
   const vault = await readVault();
   if (vault.passwordDisabled) {
     vault.openKeys = { ...memoryKeys };
+    vault.openSearch = { ...memorySearch };
     await writeVault(vault);
     return;
   }
@@ -265,8 +311,12 @@ async function persistKeys(): Promise<void> {
     memoryKey,
     JSON.stringify(memoryKeys),
   );
+  vault.searchBlob = await encryptString(
+    memoryKey,
+    JSON.stringify(memorySearch),
+  );
   await writeVault(vault);
-  await writeSession(memoryKeys, memoryKey);
+  await writeSession(memoryKeys, memorySearch, memoryKey);
 }
 
 export async function setProviderApiKey(
@@ -283,7 +333,7 @@ export async function setProviderApiKey(
   } else {
     delete memoryKeys[provider];
   }
-  await persistKeys();
+  await persistState();
 }
 
 export async function getProviderApiKey(
@@ -293,11 +343,42 @@ export async function getProviderApiKey(
   return memoryKeys[provider];
 }
 
+/** Salva as credenciais da busca no Google (API key + cx) no cofre. */
+export async function setSearchCredentials(
+  creds: SearchCredentialMap,
+): Promise<void> {
+  await hydrateVaultFromSession();
+  if (!isVaultUnlocked()) {
+    throw new Error('Cofre bloqueado. Desbloqueie primeiro.');
+  }
+  const next: SearchCredentialMap = { ...memorySearch };
+  const apply = (
+    key: keyof SearchCredentialMap,
+    value: string | undefined,
+  ): void => {
+    // undefined mantém o valor atual; vazio remove a credencial.
+    if (value === undefined) return;
+    const trimmed = value.trim();
+    if (trimmed) next[key] = trimmed;
+    else delete next[key];
+  };
+  apply('googleApiKey', creds.googleApiKey);
+  apply('googleCx', creds.googleCx);
+  memorySearch = next;
+  await persistState();
+}
+
+export async function getSearchCredentials(): Promise<SearchCredentialMap> {
+  await hydrateVaultFromSession();
+  return { ...memorySearch };
+}
+
 export async function getVaultStatus(): Promise<{
   configured: boolean;
   unlocked: boolean;
   passwordDisabled: boolean;
   providersWithKey: ProviderId[];
+  hasGoogleSearch: boolean;
 }> {
   await hydrateVaultFromSession();
   const vault = await readVault();
@@ -310,5 +391,8 @@ export async function getVaultStatus(): Promise<{
     unlocked: isVaultUnlocked(),
     passwordDisabled,
     providersWithKey,
+    hasGoogleSearch: Boolean(
+      memorySearch.googleApiKey && memorySearch.googleCx,
+    ),
   };
 }

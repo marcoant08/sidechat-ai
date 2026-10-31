@@ -22,6 +22,15 @@ Extensão para **Chrome** e **Brave** que facilita conversar com LLMs a partir d
 
 Providers suportados: **OpenAI**, **Groq**, **Anthropic**, **OpenRouter**.
 
+### Busca no Google (opcional)
+
+Com a busca ligada, antes de responder o modelo decide automaticamente se a
+pergunta precisa de dados atuais da web (notícias, preços, versões, eventos
+recentes…). Se precisar, a extensão consulta a **Google Custom Search JSON API**
+e injeta os resultados como contexto — funciona com qualquer provider, inclusive
+o Groq. Conversas do dia a dia, código, tradução e conceitos estáveis respondem
+normalmente, sem busca.
+
 ## Requisitos
 
 - Node.js 18+ (para build)
@@ -48,7 +57,11 @@ npm run build
 3. **Desbloqueie** o cofre.
 4. Cole as **API keys / tokens** dos providers que for usar e salve cada uma.
 5. Defina **provider padrão** e **modelo LLM padrão** (ou um model id customizado).
-6. Salve as preferências.
+6. (Opcional) Para busca no Google: crie uma **API key** no Google Cloud com a
+   *Custom Search API* habilitada e um *Programmable Search Engine* (para
+   obter o `cx`); cole ambos em **Busca no Google** e ligue o toggle
+   **Busca no Google automática**.
+7. Salve as preferências.
 
 O desbloqueio dura a sessão do navegador (sobrevive ao restart do service worker). Ao fechar o navegador, o cofre bloqueia de novo.
 
@@ -84,6 +97,7 @@ npm run build     # build de produção
 - **Keys nunca** são enviadas ao content script nem renderizadas depois de salvas.
 - **Histórico** fica só no navegador (`chrome.storage.local`), sem sync.
 - **Texto selecionado e mensagens** vão ao provider escolhido — não use com dados sensíveis.
+- **Busca no Google:** quando ligada e o modelo decide buscar, a consulta (derivada da sua mensagem) é enviada à Google Custom Search API. Os resultados voltam como contexto para o provider.
 - Respostas do modelo são renderizadas como **texto puro** (sem HTML) para reduzir risco de XSS.
 - O messaging interno valida o `sender` da extensão e o schema das mensagens.
 
@@ -101,8 +115,9 @@ Uso recomendado: pessoal / desenvolvimento, com keys próprias.
 
 ## Estrutura
 
-- `entrypoints/background.ts` — cofre, providers, streaming
+- `entrypoints/background.ts` — cofre, providers, busca, streaming
 - `entrypoints/content/` — botão de seleção + chat popup
 - `entrypoints/options/` — configuração
 - `entrypoints/popup/` — status + atalho Configurar
+- `lib/search/` — decisão automática + cliente da Google Custom Search
 - `lib/` — crypto, storage, providers, messaging

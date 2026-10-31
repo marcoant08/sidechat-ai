@@ -385,6 +385,26 @@ textarea.opts-input {
   color: var(--opts-muted);
 }
 
+.opts-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+}
+
+.opts-toggle-row .opts-hint {
+  margin: 0;
+}
+
+.opts-checkbox {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.15rem;
+  flex: none;
+  accent-color: var(--opts-accent, #3b82f6);
+  cursor: pointer;
+}
+
 .opts-note {
   margin: 0 0 0.75rem;
   padding: 0.65rem 0.8rem;
